@@ -110,4 +110,28 @@ class TriggerCoordinatorTest {
             ),
         )
     }
+
+    @Test
+    fun directLensRequestsCaptureLikeOtherManualFallbacks() {
+        assertEquals(
+            TriggerAction.RequestLensCapture,
+            coordinator.nextAction(TriggerStrategy.DIRECT_LENS, AutoResolution.UNKNOWN),
+        )
+        assertEquals(
+            TriggerTransition(TriggerAction.RequestLensCapture, AutoResolution.UNKNOWN),
+            coordinator.afterNative(
+                TriggerStrategy.DIRECT_LENS,
+                AutoResolution.UNKNOWN,
+                NativeTriggerResult.AcceptedUnverified,
+            ),
+        )
+        assertEquals(
+            TriggerTransition(TriggerAction.RequestLensCapture, AutoResolution.FALLBACK_CONFIRMED),
+            coordinator.afterNative(
+                TriggerStrategy.DIRECT_LENS,
+                AutoResolution.FALLBACK_CONFIRMED,
+                NativeTriggerResult.Rejected,
+            ),
+        )
+    }
 }

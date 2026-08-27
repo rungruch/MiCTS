@@ -4,6 +4,7 @@ enum class TriggerStrategy {
     AUTO,
     NATIVE_ONLY,
     LENS_FALLBACK,
+    DIRECT_LENS,
 }
 
 enum class AutoResolution {
@@ -38,6 +39,7 @@ class TriggerCoordinator {
     ): TriggerAction = when (strategy) {
         TriggerStrategy.NATIVE_ONLY -> TriggerAction.InvokeNative
         TriggerStrategy.LENS_FALLBACK -> TriggerAction.RequestLensCapture
+        TriggerStrategy.DIRECT_LENS -> TriggerAction.RequestLensCapture
         TriggerStrategy.AUTO -> when (autoResolution) {
             AutoResolution.UNKNOWN,
             AutoResolution.NATIVE_CONFIRMED -> TriggerAction.InvokeNative

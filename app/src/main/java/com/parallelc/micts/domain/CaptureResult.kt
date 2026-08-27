@@ -13,5 +13,6 @@ enum class CaptureFailureReason {
     TIMED_OUT,
     EMPTY_IMAGE,
     WRITE_FAILED,
+    CONSENT_EXPIRED,
     UNKNOWN,
 }

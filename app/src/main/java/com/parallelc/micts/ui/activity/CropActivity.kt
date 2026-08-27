@@ -109,12 +109,16 @@ import kotlin.math.roundToInt
 
 class CropActivity : ComponentActivity() {
     companion object {
+        private const val EXTRA_AUTO_LENS = "auto_lens"
+
         fun createIntent(
             context: android.content.Context,
             probablyProtected: Boolean,
             failureReason: CaptureFailureReason?,
+            autoLens: Boolean = false,
         ): Intent = Intent(context, CropActivity::class.java).apply {
             putExtra(CropViewModel.EXTRA_PROBABLY_PROTECTED, probablyProtected)
+            putExtra(EXTRA_AUTO_LENS, autoLens)
             failureReason?.let { putExtra(CropViewModel.EXTRA_FAILURE_REASON, it.name) }
         }
     }
@@ -125,11 +129,16 @@ class CropActivity : ComponentActivity() {
     private var browserFallback by mutableStateOf<ExternalActionResult.BrowserFallback?>(null)
     private var unavailableAction by mutableStateOf<ExternalActionKind?>(null)
 
+    private var autoLensRequested = false
+    private var autoLensCompleted = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         actionBar?.hide()
         externalActions = AndroidExternalActionGateway(this)
+
+        autoLensRequested = intent.getBooleanExtra(EXTRA_AUTO_LENS, false)
 
         setContent {
             MiCTSTheme {
@@ -173,6 +182,29 @@ class CropActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (autoLensRequested && !autoLensCompleted) {
+            autoLensRequested = false
+            autoLensCompleted = true
+            requestAutoLens()
+        }
+    }
+
+    private fun requestAutoLens() {
+        // Run after the activity is genuinely foreground: starting another app's
+        // activity (Lens) from an activity that is not yet resumed is treated as
+        // a background start and fails. This mirrors the user-tap path that works.
+        val lens = LensShareGateway(this)
+        if (lens.canShareToGoogle() && lens.share(CaptureFiles.capture(this))) {
+            finish()
+        } else {
+            // Lens unavailable or share failed: fall back gracefully to the
+            // normal editor and explain why the Lens action is unavailable.
+            lensUnavailable = true
         }
     }
 
@@ -851,5 +883,6 @@ private fun captureFailureMessage(reason: CaptureFailureReason): String = when (
     CaptureFailureReason.TIMED_OUT -> stringResource(R.string.capture_timed_out)
     CaptureFailureReason.EMPTY_IMAGE -> stringResource(R.string.capture_empty_image)
     CaptureFailureReason.WRITE_FAILED -> stringResource(R.string.capture_write_failed)
+    CaptureFailureReason.CONSENT_EXPIRED -> stringResource(R.string.capture_consent_expired)
     CaptureFailureReason.UNKNOWN -> stringResource(R.string.capture_unknown_error)
 }

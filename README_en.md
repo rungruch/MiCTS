@@ -31,11 +31,18 @@ Trigger Circle to Search on any Android 9–16 device
 MiCTS defaults to `Auto: native first`. The first launch tries real Circle to Search. On the next launch, MiCTS asks whether the native interface appeared:
 
 - Choose `Yes, keep native` to continue using real Circle to Search.
-- Choose `No, use Lens fallback` if Google disables Circle to Search. Android will ask for screen-capture permission and MiCTS will open its smart screen-search editor.
+- Choose `No, use Lens fallback` if Google disables Circle to Search. Android asks for screen-capture permission the first time only; MiCTS remembers that approval locally for later triggers.
+
+Settings offers four trigger strategies:
+
+- **Auto: native first** - try real Circle to Search, remember what works, fall back automatically if the system rejects it.
+- **Native Circle to Search only** - never use a fallback.
+- **Smart screen editor (local OCR)** - after capturing one frame, open MiCTS's private editor with bundled offline Latin/Chinese text recognition, selection, Copy/Search/Translate, and a Lens handoff for the selected region or full screen.
+- **Google Lens directly** - share the full captured frame straight into the Google app's Lens screen without opening the local editor. Refine the region inside Lens itself.
 
 The fallback recognizes Latin and Chinese text locally with models bundled in MiCTS. You can tap detected text or draw a rectangle, pinch to zoom, then Copy, Search, Translate, or send the selected region to Google Lens. Full-screen Lens is available from the editor's overflow menu. Text recognition can be disabled in Settings without disabling Lens.
 
-The Lens path is a fallback, not native Circle to Search. It asks for capture consent on every trigger, stores at most one temporary capture in the app cache, and does not upload the image or recognized text itself. Search, Translate, and Lens receive content only after you explicitly tap their action, and those external apps or websites apply their own privacy policies.
+The Lens path is a fallback, not native Circle to Search. Screen-capture consent is requested once and stored in MiCTS private storage; if Android invalidates that approval, MiCTS clears it and asks exactly once more. At most one temporary capture is kept in the app cache, and does not upload the image or recognized text itself. Search, Translate, and Lens receive content only after you explicitly tap their action, and those external apps or websites apply their own privacy policies.
    
 
 ## Settings

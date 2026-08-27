@@ -24,8 +24,12 @@ import android.os.IBinder
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import com.parallelc.micts.R
+import com.parallelc.micts.config.AppConfig
 import com.parallelc.micts.data.CaptureFiles
+import com.parallelc.micts.data.ProjectionConsentStore
+import com.parallelc.micts.data.TriggerPreferenceStore
 import com.parallelc.micts.domain.CaptureFailureReason
+import com.parallelc.micts.domain.TriggerStrategy
 import com.parallelc.micts.ui.activity.CropActivity
 import com.parallelc.micts.ui.activity.MainActivity
 import java.io.FileOutputStream
@@ -33,20 +37,43 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class ScreenCaptureService : Service() {
     companion object {
+        private const val ACTION_ARM = "com.parallelc.micts.capture.ARM"
+        private const val ACTION_CAPTURE = "com.parallelc.micts.capture.CAPTURE"
+        private const val ACTION_DISARM = "com.parallelc.micts.capture.DISARM"
         private const val EXTRA_RESULT_CODE = "result_code"
         private const val EXTRA_RESULT_DATA = "result_data"
         private const val CHANNEL_ID = "screen_capture"
         private const val NOTIFICATION_ID = 2301
         private const val CAPTURE_TIMEOUT_MS = 7_000L
+        private const val PREF_ARMED = "capture_armed"
 
-        fun createIntent(context: Context, resultCode: Int, resultData: Intent): Intent =
+        fun armIntent(context: Context, resultCode: Int, resultData: Intent): Intent =
             Intent(context, ScreenCaptureService::class.java).apply {
+                action = ACTION_ARM
                 putExtra(EXTRA_RESULT_CODE, resultCode)
                 putExtra(EXTRA_RESULT_DATA, resultData)
             }
+
+        fun captureIntent(context: Context): Intent =
+            Intent(context, ScreenCaptureService::class.java).apply { action = ACTION_CAPTURE }
+
+        fun disarmIntent(context: Context): Intent =
+            Intent(context, ScreenCaptureService::class.java).apply { action = ACTION_DISARM }
+
+        fun isArmed(context: Context): Boolean =
+            context.getSharedPreferences(
+                AppConfig.CONFIG_NAME,
+                Context.MODE_PRIVATE,
+            ).getBoolean(PREF_ARMED, false)
+
+        private fun setArmed(context: Context, value: Boolean) {
+            context.getSharedPreferences(AppConfig.CONFIG_NAME, Context.MODE_PRIVATE)
+                .edit().putBoolean(PREF_ARMED, value).apply()
+        }
     }
 
-    private val completed = AtomicBoolean(false)
+    private val captureBusy = AtomicBoolean(false)
+    private var armed = false
     private lateinit var workerThread: HandlerThread
     private lateinit var workerHandler: Handler
     private var mediaProjection: MediaProjection? = null
@@ -55,9 +82,9 @@ class ScreenCaptureService : Service() {
 
     private val projectionCallback = object : MediaProjection.Callback() {
         override fun onStop() {
-            if (!completed.get()) {
-                completeFailure(CaptureFailureReason.PROJECTION_STOPPED)
-            }
+            ProjectionConsentStore(this@ScreenCaptureService).clear()
+            if (captureBusy.get()) completeFailure(CaptureFailureReason.PROJECTION_STOPPED)
+            disarmAndStop()
         }
     }
 
@@ -71,43 +98,98 @@ class ScreenCaptureService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent == null) {
-            completeFailure(CaptureFailureReason.INVALID_PERMISSION_RESULT)
-            return START_NOT_STICKY
+        // startForeground must be called synchronously on the first
+        // startForegroundService() before doing any async work, or the
+        // platform aborts with ForegroundServiceDidNotStartInTimeException.
+        if (intent?.action != null) startCaptureForeground()
+        when (intent?.action) {
+            ACTION_ARM -> {
+                val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
+                @Suppress("DEPRECATION")
+                val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA)
+                }
+                if (resultCode != Activity.RESULT_OK || resultData == null) {
+                    completeFailure(CaptureFailureReason.INVALID_PERMISSION_RESULT)
+                    return START_NOT_STICKY
+                }
+                arm(resultCode, resultData, captureAfterArm = true)
+            }
+            ACTION_CAPTURE -> {
+                if (!armed || mediaProjection == null) {
+                    // A stored consent alone is not enough to capture: the
+                    // projection must actually be live. Clear a stale bookmark
+                    // and require a fresh one-time approval.
+                    ProjectionConsentStore(this).clear()
+                    completeFailure(CaptureFailureReason.CONSENT_EXPIRED)
+                    return START_NOT_STICKY
+                }
+                workerHandler.post { beginCapture() }
+            }
+            ACTION_DISARM -> {
+                ProjectionConsentStore(this).clear()
+                disarmAndStop()
+                return START_NOT_STICKY
+            }
+            else -> {
+                // Restart after process death: the in-memory projection is gone
+                // even though the armed flag may still say armed.
+                if (armed) {
+                    armed = false
+                    setArmed(this, false)
+                }
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
         }
+        return if (armed) START_STICKY else START_NOT_STICKY
+    }
 
-        val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
-        @Suppress("DEPRECATION")
-        val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
-        } else {
-            intent.getParcelableExtra(EXTRA_RESULT_DATA)
+    private fun arm(resultCode: Int, resultData: Intent, captureAfterArm: Boolean) {
+        runCatching {
+            val manager = getSystemService(MediaProjectionManager::class.java)
+            val projection = manager.getMediaProjection(resultCode, resultData)
+                ?: error("Android did not create a MediaProjection")
+            mediaProjection = projection
+            projection.registerCallback(projectionCallback, workerHandler)
+            armed = true
+            setArmed(this, true)
+            if (captureAfterArm) {
+                // The activity sent ARM and CAPTURE back-to-back. Capture now
+                // that the projection really exists, so the first frame never
+                // races ahead of the armed state.
+                workerHandler.post { beginCapture() }
+            }
+        }.getOrElse {
+            ProjectionConsentStore(this).clear()
+            completeFailure(CaptureFailureReason.CONSENT_EXPIRED)
         }
-        if (resultCode != Activity.RESULT_OK || resultData == null) {
-            completeFailure(CaptureFailureReason.INVALID_PERMISSION_RESULT)
-            return START_NOT_STICKY
-        }
+    }
 
+    private fun beginCapture() {
+        if (!captureBusy.compareAndSet(false, true)) return
         startCaptureForeground()
         CaptureFiles.prepareForCapture(this)
-        workerHandler.post { beginProjection(resultCode, resultData) }
+        workerHandler.post { beginOneShotCapture() }
         workerHandler.postDelayed(
             { completeFailure(CaptureFailureReason.TIMED_OUT) },
             CAPTURE_TIMEOUT_MS,
         )
-        return START_NOT_STICKY
     }
 
-    private fun beginProjection(resultCode: Int, resultData: Intent) {
+    /**
+     * Creates a throwaway virtual display against the long-lived projection,
+     * grabs exactly one frame, then tears the display down again so no
+     * persistent privacy indicator remains between triggers.
+     */
+    private fun beginOneShotCapture() {
         runCatching {
-            val projectionManager = getSystemService(
-                MediaProjectionManager::class.java,
-            )
-            val projection = projectionManager.getMediaProjection(resultCode, resultData)
-                ?: error("Android did not create a MediaProjection")
-            mediaProjection = projection
-            projection.registerCallback(projectionCallback, workerHandler)
-
+            val projection = mediaProjection
+                ?: error("Projection is no longer available")
             val displayInfo = getDisplayInfo()
             val reader = ImageReader.newInstance(
                 displayInfo.width,
@@ -121,7 +203,7 @@ class ScreenCaptureService : Service() {
             }, workerHandler)
 
             virtualDisplay = projection.createVirtualDisplay(
-                "MiCTS one-shot capture",
+                "MiCTS frame capture",
                 displayInfo.width,
                 displayInfo.height,
                 displayInfo.densityDpi,
@@ -136,9 +218,8 @@ class ScreenCaptureService : Service() {
     }
 
     private fun captureImage(reader: ImageReader, width: Int, height: Int) {
-        if (completed.get()) return
         val image = reader.acquireLatestImage() ?: return
-        runCatching {
+        try {
             val plane = image.planes.firstOrNull()
                 ?: error("Captured image has no pixel plane")
             val pixelStride = plane.pixelStride
@@ -161,10 +242,10 @@ class ScreenCaptureService : Service() {
             }
             bitmap.recycle()
             if (!written) error("Could not encode capture")
-            completeSuccess(probablyProtected)
-        }.onFailure {
-            completeFailure(CaptureFailureReason.WRITE_FAILED)
-        }.also {
+            finishFrame(failure = null, probablyProtected = probablyProtected)
+        } catch (failure: Throwable) {
+            finishFrame(failure = failure, probablyProtected = false)
+        } finally {
             image.close()
         }
     }
@@ -183,43 +264,75 @@ class ScreenCaptureService : Service() {
         return true
     }
 
-    private fun completeSuccess(probablyProtected: Boolean) {
-        if (!completed.compareAndSet(false, true)) return
-        launchCropActivity(probablyProtected, null)
-        releaseResources()
-        stopSelf()
+    /** Completes the current one-shot capture; the projection itself stays armed. */
+    private fun finishFrame(failure: Throwable?, probablyProtected: Boolean) {
+        if (!captureBusy.compareAndSet(true, false)) return
+        workerHandler.removeCallbacksAndMessages(null)
+        tearDownDisplay()
+        if (failure == null) {
+            routeCapture(probablyProtected)
+        } else {
+            launchCropActivity(false, CaptureFailureReason.WRITE_FAILED)
+        }
     }
 
     private fun completeFailure(reason: CaptureFailureReason) {
-        if (!completed.compareAndSet(false, true)) return
+        workerHandler.removeCallbacksAndMessages(null)
+        tearDownDisplay()
+        captureBusy.set(false)
         launchCropActivity(false, reason)
-        releaseResources()
-        stopSelf()
+        if (reason == CaptureFailureReason.CONSENT_EXPIRED ||
+            reason == CaptureFailureReason.INVALID_PERMISSION_RESULT
+        ) {
+            disarmAndStop()
+        }
+    }
+
+    private fun routeCapture(probablyProtected: Boolean) {
+        // "Google Lens directly" hands the full frame to Lens from within
+        // CropActivity (a foreground Activity) because starting Lens from this
+        // background Service trips Android's background-activity-start limit.
+        val directLens = runCatching {
+            TriggerPreferenceStore(this).strategy == TriggerStrategy.DIRECT_LENS && !probablyProtected
+        }.getOrDefault(false)
+        launchCropActivity(probablyProtected, null, autoLens = directLens)
     }
 
     private fun launchCropActivity(
         probablyProtected: Boolean,
         failureReason: CaptureFailureReason?,
+        autoLens: Boolean = false,
     ) {
-        val intent = CropActivity.createIntent(this, probablyProtected, failureReason).apply {
+        val intent = CropActivity.createIntent(this, probablyProtected, failureReason, autoLens).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
         startActivity(intent)
     }
 
-    private fun releaseResources() {
-        workerHandler.removeCallbacksAndMessages(null)
+    private fun tearDownDisplay() {
         imageReader?.setOnImageAvailableListener(null, null)
         virtualDisplay?.release()
         virtualDisplay = null
         imageReader?.close()
         imageReader = null
+    }
+
+    private fun disarmAndStop() {
+        armed = false
+        setArmed(this, false)
+        releaseResources()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    private fun releaseResources() {
+        workerHandler.removeCallbacksAndMessages(null)
+        tearDownDisplay()
         mediaProjection?.let { projection ->
             runCatching { projection.unregisterCallback(projectionCallback) }
             runCatching { projection.stop() }
         }
         mediaProjection = null
-        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     override fun onDestroy() {
@@ -230,18 +343,24 @@ class ScreenCaptureService : Service() {
 
     @SuppressLint("ForegroundServiceType")
     private fun startCaptureForeground() {
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
+        val stopIntent = PendingIntent.getService(
+            this,
+            2302,
+            disarmIntent(this),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val openIntent = PendingIntent.getActivity(
             this,
             0,
-            notificationIntent,
+            Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_tile_service)
             .setContentTitle(getString(R.string.capture_notification_title))
             .setContentText(getString(R.string.capture_notification_text))
-            .setContentIntent(pendingIntent)
+            .setContentIntent(openIntent)
+            .addAction(0, getString(R.string.capture_notification_action_stop), stopIntent)
             .setOngoing(true)
             .build()
 

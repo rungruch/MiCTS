@@ -485,6 +485,7 @@ private fun triggerStrategyLabel(strategy: TriggerStrategy): String = when (stra
     TriggerStrategy.AUTO -> stringResource(R.string.trigger_strategy_auto)
     TriggerStrategy.NATIVE_ONLY -> stringResource(R.string.trigger_strategy_native)
     TriggerStrategy.LENS_FALLBACK -> stringResource(R.string.trigger_strategy_lens)
+    TriggerStrategy.DIRECT_LENS -> stringResource(R.string.trigger_strategy_direct_lens)
 }
 
 @Composable

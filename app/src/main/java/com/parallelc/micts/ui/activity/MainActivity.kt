@@ -1,8 +1,10 @@
 package com.parallelc.micts.ui.activity
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionConfig
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -18,6 +20,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
+import androidx.core.content.ContextCompat
 import com.parallelc.micts.BuildConfig
 import com.parallelc.micts.R
 import com.parallelc.micts.capture.ScreenCaptureService
@@ -28,6 +31,7 @@ import com.parallelc.micts.config.AppConfig.KEY_DEFAULT_DELAY
 import com.parallelc.micts.config.AppConfig.KEY_TILE_DELAY
 import com.parallelc.micts.config.AppConfig.KEY_VIBRATE
 import com.parallelc.micts.data.TriggerPreferenceStore
+import com.parallelc.micts.data.ProjectionConsentStore
 import com.parallelc.micts.domain.CaptureFailureReason
 import com.parallelc.micts.domain.NativeTriggerResult
 import com.parallelc.micts.domain.TriggerAction
@@ -43,6 +47,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val EXTRA_FROM_TILE = "from_tile"
         private const val EXTRA_FORCE_LENS = "force_lens_fallback"
+        private const val KEY_NOTIFICATIONS_ASKED = "notifications_asked"
         private const val STATE_CAPTURE_REQUEST_IN_FLIGHT = "capture_request_in_flight"
         private const val STATE_CAPTURE_SERVICE_STARTED = "capture_service_started"
 
@@ -54,9 +59,17 @@ class MainActivity : ComponentActivity() {
 
     private val coordinator = TriggerCoordinator()
     private val nativeGateway = AndroidNativeTriggerGateway()
+    private val projectionConsent by lazy { ProjectionConsentStore(this) }
     private lateinit var triggerPreferences: TriggerPreferenceStore
     private var captureRequestInFlight = false
     private var captureServiceStarted = false
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { _ ->
+        // Best-effort: a denied notification permission must not block the
+        // capture flow on Android 13+.
+    }
 
     private val projectionPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -68,22 +81,8 @@ class MainActivity : ComponentActivity() {
             return@registerForActivityResult
         }
 
-        runCatching {
-            startForegroundService(
-                ScreenCaptureService.createIntent(this, result.resultCode, resultData),
-            )
-        }.onSuccess {
-            captureServiceStarted = true
-        }.onFailure {
-            startActivity(
-                CropActivity.createIntent(
-                    this,
-                    probablyProtected = false,
-                    failureReason = CaptureFailureReason.SERVICE_START_FAILED,
-                ),
-            )
-            finish()
-        }
+        projectionConsent.save(result.resultCode, resultData)
+        armCapture(result.resultCode, resultData)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -219,6 +218,21 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestScreenCapture() {
+        maybeRequestNotificationsOnce()
+        if (ScreenCaptureService.isArmed(this)) {
+            // The projection is already live from an earlier approval: just
+            // ask it to record one frame. No dialog, no re-prompt.
+            triggerCapture()
+            return
+        }
+        val storedConsent = projectionConsent.load()
+        if (storedConsent != null) {
+            // Consent approved earlier but the armed service died (process
+            // killed / beyond boot). Re-arm silently from the stored token —
+            // no new dialog — and capture immediately.
+            startCaptureService(ScreenCaptureService.armIntent(this, storedConsent.first, storedConsent.second), captureAfterArm = true)
+            return
+        }
         val projectionManager = getSystemService(MediaProjectionManager::class.java)
         val permissionIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             projectionManager.createScreenCaptureIntent(
@@ -229,6 +243,64 @@ class MainActivity : ComponentActivity() {
         }
         captureRequestInFlight = true
         projectionPermissionLauncher.launch(permissionIntent)
+    }
+
+    private fun armCapture(resultCode: Int, resultData: Intent) {
+        startCaptureService(
+            ScreenCaptureService.armIntent(this, resultCode, resultData),
+            captureAfterArm = true,
+        )
+    }
+
+    private fun triggerCapture() {
+        captureRequestInFlight = false
+        runCatching {
+            startForegroundService(ScreenCaptureService.captureIntent(this))
+        }.onSuccess {
+            captureServiceStarted = true
+        }.onFailure {
+            showCaptureServiceStartFailed()
+        }
+    }
+
+    private fun startCaptureService(intent: Intent, captureAfterArm: Boolean) {
+        captureRequestInFlight = false
+        runCatching {
+            startForegroundService(intent)
+        }.onSuccess {
+            captureServiceStarted = true
+            if (captureAfterArm) {
+                // Arm and capture run back-to-back; the service captures after
+                // its projection is ready so only one dialog (the initial
+                // approval) is ever required.
+                startForegroundService(ScreenCaptureService.captureIntent(this))
+            }
+        }.onFailure {
+            showCaptureServiceStartFailed()
+        }
+    }
+
+    private fun showCaptureServiceStartFailed() {
+        startActivity(
+            CropActivity.createIntent(
+                this,
+                probablyProtected = false,
+                failureReason = CaptureFailureReason.SERVICE_START_FAILED,
+            ),
+        )
+        finish()
+    }
+
+    private fun maybeRequestNotificationsOnce() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val preferences = getSharedPreferences(CONFIG_NAME, MODE_PRIVATE)
+        if (preferences.getBoolean(KEY_NOTIFICATIONS_ASKED, false)) return
+        preferences.edit().putBoolean(KEY_NOTIFICATIONS_ASKED, true).apply()
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 }
 
