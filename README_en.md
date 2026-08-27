@@ -31,7 +31,7 @@ Trigger Circle to Search on any Android 9–16 device
 MiCTS defaults to `Auto: native first`. The first launch tries real Circle to Search. On the next launch, MiCTS asks whether the native interface appeared:
 
 - Choose `Yes, keep native` to continue using real Circle to Search.
-- Choose `No, use Lens fallback` if Google disables Circle to Search. Android asks for screen-capture permission the first time only; MiCTS remembers that approval locally for later triggers.
+- Choose `No, use Lens fallback` if Google disables Circle to Search. Android asks for screen-capture permission for each fallback capture.
 
 Settings offers four trigger strategies:
 
@@ -42,7 +42,7 @@ Settings offers four trigger strategies:
 
 The fallback recognizes Latin and Chinese text locally with models bundled in MiCTS. You can tap detected text or draw a rectangle, pinch to zoom, then Copy, Search, Translate, or send the selected region to Google Lens. Full-screen Lens is available from the editor's overflow menu. Text recognition can be disabled in Settings without disabling Lens.
 
-The Lens path is a fallback, not native Circle to Search. Screen-capture consent is requested once and stored in MiCTS private storage; if Android invalidates that approval, MiCTS clears it and asks exactly once more. At most one temporary capture is kept in the app cache, and does not upload the image or recognized text itself. Search, Translate, and Lens receive content only after you explicitly tap their action, and those external apps or websites apply their own privacy policies.
+The Lens path is a fallback, not native Circle to Search. Android requests screen-capture consent for each capture session; MiCTS does not retain or reuse the projection token. At most one temporary capture is kept in the app cache, and MiCTS does not upload the image or recognized text itself. Search, Translate, and Lens receive content only after you explicitly tap their action, and those external apps or websites apply their own privacy policies.
    
 
 ## Settings
@@ -55,7 +55,7 @@ The Lens path is a fallback, not native Circle to Search. Screen-capture consent
 ### App Settings
 - Default trigger delay: The delay when triggering by launching MiCTS
 - Tile trigger delay: The delay when triggering by the Quick Settings panel tile
-- Trigger strategy: Choose Auto, native Circle to Search only, or the Google Lens fallback
+- Trigger strategy: Choose Auto, native Circle to Search only, the smart screen editor, or Google Lens directly
 - Reset Auto detection: Ask again whether the native trigger works
 - Recognize text locally: Enable the bundled offline Latin and Chinese models used by Copy, Search, and Translate
 - Compatibility report: Shows the Google app, assistant, Lens, Android framework, and selected trigger-service status without claiming access to Google's private device eligibility

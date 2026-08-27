@@ -38,12 +38,10 @@
     <string name="native_confirmation_yes">Yes, keep native</string>
     <string name="native_confirmation_no">No, use Lens fallback</string>
     <string name="capture_permission_denied_title">Screen capture permission needed</string>
-    <string name="capture_permission_denied">Screen capture permission was not granted. MiCTS asks the first time only and remembers your approval on this device, so Android does not ask again on later triggers.</string>
-    <string name="capture_consent_expired">Your screen-capture approval ended, so MiCTS will ask for it once more on the next trigger.</string>
+    <string name="capture_permission_denied">Screen capture permission was not granted. Android asks for approval for each capture session, and MiCTS does not retain or reuse the projection token.</string>
     <string name="capture_notification_channel">Screen capture</string>
     <string name="capture_notification_title">Preparing Lens fallback</string>
-    <string name="capture_notification_text">Screen capture is on so you are not asked again. Tap to open MiCTS.</string>
-    <string name="capture_notification_action_stop">Stop</string>
+    <string name="capture_notification_text">Capturing one frame for cropping</string>
     <string name="crop_title">Crop for Google Lens</string>
     <string name="smart_search_title">Smart screen search</string>
     <string name="crop_editor_description">Captured screen with recognized text, a movable selection, and pinch-to-zoom controls</string>

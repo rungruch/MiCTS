@@ -883,6 +883,5 @@ private fun captureFailureMessage(reason: CaptureFailureReason): String = when (
     CaptureFailureReason.TIMED_OUT -> stringResource(R.string.capture_timed_out)
     CaptureFailureReason.EMPTY_IMAGE -> stringResource(R.string.capture_empty_image)
     CaptureFailureReason.WRITE_FAILED -> stringResource(R.string.capture_write_failed)
-    CaptureFailureReason.CONSENT_EXPIRED -> stringResource(R.string.capture_consent_expired)
     CaptureFailureReason.UNKNOWN -> stringResource(R.string.capture_unknown_error)
 }
