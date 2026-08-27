@@ -31,7 +31,7 @@ Trigger Circle to Search on any Android 9–16 device
 MiCTS defaults to `Auto: native first`. The first launch tries real Circle to Search. On the next launch, MiCTS asks whether the native interface appeared:
 
 - Choose `Yes, keep native` to continue using real Circle to Search.
-- Choose `No, use Lens fallback` if Google disables Circle to Search. Android asks for screen-capture permission for each fallback capture.
+- Choose `No, use Lens fallback` if Google disables Circle to Search. The first fallback trigger asks you to choose a capture method.
 
 Settings offers four trigger strategies:
 
@@ -42,7 +42,19 @@ Settings offers four trigger strategies:
 
 The fallback recognizes Latin and Chinese text locally with models bundled in MiCTS. You can tap detected text or draw a rectangle, pinch to zoom, then Copy, Search, Translate, or send the selected region to Google Lens. Full-screen Lens is available from the editor's overflow menu. Text recognition can be disabled in Settings without disabling Lens.
 
-The Lens path is a fallback, not native Circle to Search. Android requests screen-capture consent for each capture session; MiCTS does not retain or reuse the projection token. At most one temporary capture is kept in the app cache, and MiCTS does not upload the image or recognized text itself. Search, Translate, and Lens receive content only after you explicitly tap their action, and those external apps or websites apply their own privacy policies.
+The Lens path is a fallback, not native Circle to Search. At most one temporary capture is kept in the app cache, and MiCTS does not upload the image or recognized text itself. Search, Translate, and Lens receive content only after you explicitly tap their action, and those external apps or websites apply their own privacy policies.
+
+### Capture permission and privacy
+
+| Android version | Fast capture | Ask every time |
+| --- | --- | --- |
+| Android 9–10 (API 28–29) | Not available because Android has no Accessibility screenshot API | Required for each fallback trigger |
+| Android 11–12 (API 30–32) | Recommended; enable the screenshot-only MiCTS service once | Optional; new MediaProjection consent for every trigger |
+| Android 13+ (API 33+) | Recommended; direct installs may first need App info → More → Allow restricted settings | Optional; new MediaProjection consent for every trigger, including Android 14+ |
+
+Fast capture uses Android's Accessibility screenshot API only after an explicit launcher or Quick Settings trigger. The MiCTS service does not retrieve window content, receive Accessibility events, perform gestures, use the Accessibility button, or display overlays. It remains enabled until you disable it in Android Accessibility settings. If it is disabled or disconnected, MiCTS shows recovery choices instead of unexpectedly opening a screen-capture dialog.
+
+`Ask every time` is the privacy-focused alternative. It creates one MediaProjection session, captures one frame, releases every projection resource, and discards the consent token. MiCTS never reuses a projection consent intent or token; Android 14 and later explicitly require fresh consent for each session.
    
 
 ## Settings
@@ -56,6 +68,7 @@ The Lens path is a fallback, not native Circle to Search. Android requests scree
 - Default trigger delay: The delay when triggering by launching MiCTS
 - Tile trigger delay: The delay when triggering by the Quick Settings panel tile
 - Trigger strategy: Choose Auto, native Circle to Search only, the smart screen editor, or Google Lens directly
+- Capture method: On Android 11+, choose Fast capture or Ask every time and inspect whether the screenshot service is enabled and connected. Android 9–10 always asks every time.
 - Reset Auto detection: Ask again whether the native trigger works
 - Recognize text locally: Enable the bundled offline Latin and Chinese models used by Copy, Search, and Translate
 - Compatibility report: Shows the Google app, assistant, Lens, Android framework, and selected trigger-service status without claiming access to Google's private device eligibility

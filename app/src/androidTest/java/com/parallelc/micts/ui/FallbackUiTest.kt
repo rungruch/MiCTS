@@ -12,6 +12,10 @@ import com.parallelc.micts.domain.FloatRect
 import com.parallelc.micts.domain.ViewportState
 import com.parallelc.micts.ui.activity.CaptureProblem
 import com.parallelc.micts.ui.activity.CropScreen
+import com.parallelc.micts.ui.activity.FastCaptureConnectingScreen
+import com.parallelc.micts.ui.activity.FastCaptureRecoveryScreen
+import com.parallelc.micts.ui.activity.FastCaptureSetupScreen
+import com.parallelc.micts.ui.activity.LegacyCaptureExplanationScreen
 import com.parallelc.micts.ui.activity.LensUnavailableDialog
 import com.parallelc.micts.ui.activity.NativeConfirmationDialog
 import com.parallelc.micts.ui.theme.MiCTSTheme
@@ -95,6 +99,116 @@ class FallbackUiTest {
         composeRule.onNodeWithText("Screen capture permission needed").assertIsDisplayed()
         composeRule.onNodeWithText("Retake").performClick()
         assertTrue(retakeSelected)
+    }
+
+    @Test
+    fun fastCaptureSetupExplainsPrivacyAndOffersPersistentChoice() {
+        var fastSelected = false
+        var askSelected = false
+        var appInfoSelected = false
+        composeRule.setContent {
+            MiCTSTheme {
+                FastCaptureSetupScreen(
+                    showRestrictedSettingsHelp = true,
+                    onEnableFastCapture = { fastSelected = true },
+                    onAskEveryTime = { askSelected = true },
+                    onOpenAppInfo = { appInfoSelected = true },
+                    onCancel = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Set up Fast capture").assertIsDisplayed()
+        composeRule.onNodeWithText("Enable Fast capture").performClick()
+        assertTrue(fastSelected)
+
+        composeRule.setContent {
+            MiCTSTheme {
+                FastCaptureSetupScreen(
+                    showRestrictedSettingsHelp = true,
+                    onEnableFastCapture = {},
+                    onAskEveryTime = { askSelected = true },
+                    onOpenAppInfo = { appInfoSelected = true },
+                    onCancel = {},
+                )
+            }
+        }
+        composeRule.onNodeWithText("Ask every time instead").performClick()
+        assertTrue(askSelected)
+        composeRule.onNodeWithText("Open App info").performClick()
+        assertTrue(appInfoSelected)
+    }
+
+    @Test
+    fun fastCaptureRecoveryNeverSurprisesWithProjection() {
+        var reenableSelected = false
+        var useOnceSelected = false
+        var changeSelected = false
+        composeRule.setContent {
+            MiCTSTheme {
+                FastCaptureRecoveryScreen(
+                    showRestrictedSettingsHelp = false,
+                    onReenable = { reenableSelected = true },
+                    onUseOnce = { useOnceSelected = true },
+                    onOpenAppInfo = {},
+                    onChangeMethod = { changeSelected = true },
+                    onCancel = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Fast capture is unavailable").assertIsDisplayed()
+        composeRule.onNodeWithText("Re-enable Fast capture").performClick()
+        assertTrue(reenableSelected)
+
+        composeRule.setContent {
+            MiCTSTheme {
+                FastCaptureRecoveryScreen(
+                    showRestrictedSettingsHelp = false,
+                    onReenable = {},
+                    onUseOnce = { useOnceSelected = true },
+                    onOpenAppInfo = {},
+                    onChangeMethod = { changeSelected = true },
+                    onCancel = {},
+                )
+            }
+        }
+        composeRule.onNodeWithText("Use once").performClick()
+        composeRule.onNodeWithText("Change capture method").performClick()
+        assertTrue(useOnceSelected)
+        assertTrue(changeSelected)
+    }
+
+    @Test
+    fun legacyCaptureExplainsPerTriggerConsent() {
+        var continued = false
+        composeRule.setContent {
+            MiCTSTheme {
+                LegacyCaptureExplanationScreen(
+                    onContinue = { continued = true },
+                    onCancel = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Screen capture on this Android version")
+            .assertIsDisplayed()
+        composeRule.onNodeWithText("Continue").performClick()
+        assertTrue(continued)
+    }
+
+    @Test
+    fun connectingStateCanBeCancelled() {
+        var cancelled = false
+        composeRule.setContent {
+            MiCTSTheme {
+                FastCaptureConnectingScreen(onCancel = { cancelled = true })
+            }
+        }
+
+        composeRule.onNodeWithText("Connecting Fast capture").assertIsDisplayed()
+        composeRule.onNodeWithText("Cancel").performClick()
+        assertTrue(cancelled)
     }
 
     @Test

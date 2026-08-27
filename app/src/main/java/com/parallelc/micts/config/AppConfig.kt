@@ -28,6 +28,9 @@ object AppConfig {
     const val KEY_TRIGGER_STRATEGY = "trigger_strategy"
     const val KEY_AUTO_RESOLUTION = "auto_resolution"
     const val KEY_LOCAL_TEXT_RECOGNITION = "local_text_recognition"
+    const val KEY_CAPTURE_MODE = "capture_mode"
+    const val KEY_LEGACY_CAPTURE_EXPLAINER_SEEN = "legacy_capture_explainer_seen"
+    const val KEY_CAPTURE_PERMISSION_SCHEMA = "capture_permission_schema"
 
     val DEFAULT_CONFIG = mapOf<String, Any>(
         KEY_LANGUAGE to Language.FollowSystem.ordinal,
@@ -38,5 +41,8 @@ object AppConfig {
         KEY_TRIGGER_STRATEGY to "AUTO",
         KEY_AUTO_RESOLUTION to "UNKNOWN",
         KEY_LOCAL_TEXT_RECOGNITION to true,
+        KEY_CAPTURE_MODE to "UNSET",
+        KEY_LEGACY_CAPTURE_EXPLAINER_SEEN to false,
+        KEY_CAPTURE_PERMISSION_SCHEMA to 1,
     )
 }

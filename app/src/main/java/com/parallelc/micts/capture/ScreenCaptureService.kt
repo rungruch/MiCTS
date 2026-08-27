@@ -27,10 +27,10 @@ import com.parallelc.micts.R
 import com.parallelc.micts.data.CaptureFiles
 import com.parallelc.micts.data.TriggerPreferenceStore
 import com.parallelc.micts.domain.CaptureFailureReason
+import com.parallelc.micts.domain.CaptureResult
 import com.parallelc.micts.domain.TriggerStrategy
 import com.parallelc.micts.ui.activity.CropActivity
 import com.parallelc.micts.ui.activity.MainActivity
-import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicBoolean
 
 class ScreenCaptureService : Service() {
@@ -157,33 +157,19 @@ class ScreenCaptureService : Service() {
             val bitmap = Bitmap.createBitmap(paddedBitmap, 0, 0, width, height)
             if (bitmap !== paddedBitmap) paddedBitmap.recycle()
 
-            val probablyProtected = isProbablyProtected(bitmap)
-            val output = CaptureFiles.capture(this)
-            val written = FileOutputStream(output).use { stream ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
-            }
+            val result = BitmapCaptureWriter.write(this, bitmap)
             bitmap.recycle()
-            if (!written) error("Could not encode capture")
-            completeSuccess(probablyProtected)
+            when (result) {
+                is CaptureResult.Success -> completeSuccess(result.probablyProtected)
+                CaptureResult.PermissionDenied ->
+                    completeFailure(CaptureFailureReason.INVALID_PERMISSION_RESULT)
+                is CaptureResult.Failure -> completeFailure(result.reason)
+            }
         }.onFailure {
             completeFailure(CaptureFailureReason.WRITE_FAILED)
         }.also {
             image.close()
         }
-    }
-
-    private fun isProbablyProtected(bitmap: Bitmap): Boolean {
-        val samplesPerAxis = 12
-        for (xIndex in 0 until samplesPerAxis) {
-            for (yIndex in 0 until samplesPerAxis) {
-                val x = ((xIndex + 0.5f) * bitmap.width / samplesPerAxis)
-                    .toInt().coerceIn(0, bitmap.width - 1)
-                val y = ((yIndex + 0.5f) * bitmap.height / samplesPerAxis)
-                    .toInt().coerceIn(0, bitmap.height - 1)
-                if ((bitmap.getPixel(x, y) and 0x00FFFFFF) > 0x00010101) return false
-            }
-        }
-        return true
     }
 
     private fun completeSuccess(probablyProtected: Boolean) {

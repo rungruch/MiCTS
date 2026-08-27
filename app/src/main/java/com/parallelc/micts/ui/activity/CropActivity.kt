@@ -883,5 +883,14 @@ private fun captureFailureMessage(reason: CaptureFailureReason): String = when (
     CaptureFailureReason.TIMED_OUT -> stringResource(R.string.capture_timed_out)
     CaptureFailureReason.EMPTY_IMAGE -> stringResource(R.string.capture_empty_image)
     CaptureFailureReason.WRITE_FAILED -> stringResource(R.string.capture_write_failed)
+    CaptureFailureReason.ACCESSIBILITY_DISABLED ->
+        stringResource(R.string.capture_accessibility_disabled)
+    CaptureFailureReason.ACCESSIBILITY_DISCONNECTED ->
+        stringResource(R.string.capture_accessibility_disconnected)
+    CaptureFailureReason.SCREENSHOT_RATE_LIMITED -> stringResource(R.string.capture_rate_limited)
+    CaptureFailureReason.SECURE_WINDOW -> stringResource(R.string.protected_capture_message)
+    CaptureFailureReason.INVALID_DISPLAY -> stringResource(R.string.capture_invalid_display)
+    CaptureFailureReason.SCREENSHOT_INTERNAL_ERROR ->
+        stringResource(R.string.capture_screenshot_internal_error)
     CaptureFailureReason.UNKNOWN -> stringResource(R.string.capture_unknown_error)
 }

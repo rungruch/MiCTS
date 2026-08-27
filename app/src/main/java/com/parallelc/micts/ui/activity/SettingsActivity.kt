@@ -2,8 +2,10 @@ package com.parallelc.micts.ui.activity
 
 import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -69,8 +71,11 @@ import com.parallelc.micts.config.Language
 import com.parallelc.micts.config.TriggerService
 import com.parallelc.micts.config.XposedConfig
 import com.parallelc.micts.data.CompatibilityReportProvider
+import com.parallelc.micts.data.FastCaptureGatewayFactory
 import com.parallelc.micts.domain.AutoResolution
+import com.parallelc.micts.domain.CaptureMode
 import com.parallelc.micts.domain.CompatibilityReport
+import com.parallelc.micts.domain.FastCaptureAvailability
 import com.parallelc.micts.domain.TriggerStrategy
 import com.parallelc.micts.ui.theme.MiCTSTheme
 import com.parallelc.micts.ui.viewmodel.SettingsViewModel
@@ -270,6 +275,7 @@ fun SettingsPage(
 
         if (BuildConfig.APP_NAME == "MiCTS") {
             TriggerStrategySettings(appConfig, viewModel)
+            CaptureMethodSettings(appConfig, viewModel)
             ListItem(
                 headlineContent = { Text(stringResource(R.string.local_text_recognition)) },
                 supportingContent = {
@@ -422,6 +428,130 @@ fun SettingsPage(
 }
 
 @Composable
+private fun CaptureMethodSettings(
+    appConfig: Map<String, Any>,
+    viewModel: SettingsViewModel,
+) {
+    val context = LocalContext.current
+    val mode = CaptureMode.entries.firstOrNull {
+        it.name == appConfig[AppConfig.KEY_CAPTURE_MODE] as? String
+    } ?: CaptureMode.UNSET
+    val availability = FastCaptureGatewayFactory.create(context).availability()
+    val fastSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+    var expanded by remember { mutableStateOf(false) }
+
+    fun openAccessibilitySettings() {
+        context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    }
+
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.capture_method)) },
+        supportingContent = {
+            Text(
+                if (fastSupported) {
+                    stringResource(R.string.capture_method_summary)
+                } else {
+                    stringResource(R.string.capture_method_legacy_summary)
+                },
+            )
+        },
+        trailingContent = {
+            if (fastSupported) {
+                Box {
+                    TextButton(onClick = { expanded = true }) {
+                        Text(captureModeLabel(mode))
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                    ) {
+                        listOf(
+                            CaptureMode.FAST_ACCESSIBILITY,
+                            CaptureMode.ASK_EVERY_TIME,
+                        ).forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(captureModeLabel(option)) },
+                                onClick = {
+                                    expanded = false
+                                    viewModel.updateAppConfig(
+                                        AppConfig.KEY_CAPTURE_MODE,
+                                        option.name,
+                                    )
+                                    if (option == CaptureMode.FAST_ACCESSIBILITY) {
+                                        openAccessibilitySettings()
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+            } else {
+                Text(stringResource(R.string.capture_mode_ask))
+            }
+        },
+    )
+
+    if (fastSupported) {
+        val enabled = availability == FastCaptureAvailability.CONNECTING ||
+            availability == FastCaptureAvailability.READY
+        val connected = availability == FastCaptureAvailability.READY
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.fast_capture_service_status)) },
+            supportingContent = {
+                Text(
+                    stringResource(
+                        R.string.fast_capture_status_values,
+                        statusLabel(enabled),
+                        statusLabel(connected),
+                    ),
+                )
+            },
+            trailingContent = {
+                TextButton(onClick = ::openAccessibilitySettings) {
+                    Text(
+                        stringResource(
+                            if (enabled) R.string.manage else R.string.setup,
+                        ),
+                    )
+                }
+            },
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.restricted_settings_title)) },
+                supportingContent = { Text(stringResource(R.string.restricted_settings_help)) },
+                trailingContent = {
+                    TextButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(
+                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.parse("package:${context.packageName}"),
+                                ),
+                            )
+                        },
+                    ) {
+                        Text(stringResource(R.string.open_app_info))
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun captureModeLabel(mode: CaptureMode): String = when (mode) {
+    CaptureMode.UNSET -> stringResource(R.string.capture_mode_unset)
+    CaptureMode.FAST_ACCESSIBILITY -> stringResource(R.string.capture_mode_fast)
+    CaptureMode.ASK_EVERY_TIME -> stringResource(R.string.capture_mode_ask)
+}
+
+@Composable
+private fun statusLabel(value: Boolean): String = stringResource(
+    if (value) R.string.status_yes else R.string.status_no,
+)
+
+@Composable
 private fun TriggerStrategySettings(
     appConfig: Map<String, Any>,
     viewModel: SettingsViewModel,
@@ -549,6 +679,10 @@ private fun compatibilityLines(report: CompatibilityReport): List<String> {
         "${stringResource(R.string.compatibility_cts_service)}: ${status(report.contextualSearchServiceAvailable)}",
         "${stringResource(R.string.compatibility_lens_share)}: ${status(report.lensShareAvailable)}",
         "${stringResource(R.string.compatibility_trigger_service)}: ${report.selectedTriggerService}",
+        "${stringResource(R.string.compatibility_capture_method)}: ${captureModeLabel(report.captureMode)}",
+        "${stringResource(R.string.compatibility_fast_capture_api)}: ${status(report.fastCaptureApiAvailable)}",
+        "${stringResource(R.string.compatibility_fast_capture_enabled)}: ${status(report.fastCaptureEnabled)}",
+        "${stringResource(R.string.compatibility_fast_capture_connected)}: ${status(report.fastCaptureConnected)}",
     )
 }
 

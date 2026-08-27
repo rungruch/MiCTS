@@ -15,6 +15,7 @@ import com.parallelc.micts.config.AppConfig
 import com.parallelc.micts.config.Language
 import com.parallelc.micts.config.TriggerService
 import com.parallelc.micts.config.XposedConfig
+import com.parallelc.micts.data.CapturePreferenceStore
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedService.OnScopeEventListener
 import io.github.libxposed.service.XposedService.ServiceException
@@ -57,6 +58,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     var triggerServiceExpanded = mutableStateOf(false)
 
     init {
+        // Run the one-time capture-permission migration before exposing preferences to Compose.
+        CapturePreferenceStore(application)
         appConfigPref = application.getSharedPreferences(AppConfig.CONFIG_NAME, MODE_PRIVATE)
         _appConfig.value = AppConfig.DEFAULT_CONFIG + appConfigPref.all.filterValues { it != null }.mapValues { it.value as Any }
         _locale.value = Language.entries[_appConfig.value[AppConfig.KEY_LANGUAGE] as Int].toLocale()

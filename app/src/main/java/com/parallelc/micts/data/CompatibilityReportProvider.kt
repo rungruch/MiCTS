@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import com.parallelc.micts.domain.CompatibilityReport
+import com.parallelc.micts.domain.FastCaptureAvailability
 
 class CompatibilityReportProvider(private val context: Context) {
     companion object {
@@ -36,6 +37,8 @@ class CompatibilityReportProvider(private val context: Context) {
         val contextualIntent = Intent(CONTEXTUAL_SEARCH_ACTION).setPackage(
             LensShareGateway.GOOGLE_APP_PACKAGE,
         )
+        val captureMode = CapturePreferenceStore(context).mode
+        val fastCaptureAvailability = FastCaptureGatewayFactory.create(context).availability()
 
         return CompatibilityReport(
             manufacturer = Build.MANUFACTURER,
@@ -59,6 +62,12 @@ class CompatibilityReportProvider(private val context: Context) {
             }.getOrDefault(false),
             lensShareAvailable = LensShareGateway(context).canShareToGoogle(),
             selectedTriggerService = selectedTriggerService,
+            captureMode = captureMode,
+            fastCaptureApiAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R,
+            fastCaptureEnabled = fastCaptureAvailability ==
+                FastCaptureAvailability.CONNECTING || fastCaptureAvailability ==
+                FastCaptureAvailability.READY,
+            fastCaptureConnected = fastCaptureAvailability == FastCaptureAvailability.READY,
         )
     }
 }
