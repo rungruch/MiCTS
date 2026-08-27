@@ -1,0 +1,47 @@
+[versions]
+accompanist-drawablepainter = "0.37.3"
+agp = "9.1.0"
+hiddenapibypass = "6.1"
+kotlin = "2.3.20"
+material = "1.13.0"
+xposed-api = "101.0.1"
+xposed-service = "101.0.0"
+lifecycle-runtime-ktx = "2.10.0"
+activity-compose = "1.13.0"
+compose-bom = "2026.03.01"
+animation-core-android = "1.10.6"
+animation-android = "1.10.6"
+junit = "4.13.2"
+androidx-test = "1.7.0"
+androidx-test-ext = "1.3.0"
+
+[libraries]
+hiddenapibypass = { group = "org.lsposed.hiddenapibypass", name = "hiddenapibypass", version.ref = "hiddenapibypass" }
+libxposed-api = { group = "io.github.libxposed", name = "api", version.ref = "xposed-api" }
+libxposed-service = { group = "io.github.libxposed", name = "service", version.ref = "xposed-service" }
+lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle-runtime-ktx" }
+activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
+compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
+material = { module = "com.google.android.material:material", version.ref = "material" }
+material3 = { group = "androidx.compose.material3", name = "material3" }
+animation-core-android = { group = "androidx.compose.animation", name = "animation-core-android", version.ref = "animation-core-android" }
+animation-android = { group = "androidx.compose.animation", name = "animation-android", version.ref = "animation-android" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+accompanist-drawablepainter = { group = "com.google.accompanist", name = "accompanist-drawablepainter", version.ref = "accompanist-drawablepainter" }
+androidx-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidx-test" }
+androidx-test-core-ktx = { group = "androidx.test", name = "core-ktx", version.ref = "androidx-test" }
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-ext" }
+compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+androidLibrary = { id = "com.android.library", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+lsplugin-jgit = { id = "org.lsposed.lsplugin.jgit", version = "1.1" }
+lsplugin-apksign = { id = "org.lsposed.lsplugin.apksign", version = "1.4" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
