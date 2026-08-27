@@ -31,3 +31,8 @@
 -dontwarn com.google.mlkit.**
 -dontwarn com.google.firebase.**
 -dontwarn com.google.android.gms.internal.**
+
+# --- OkHttp (MiCTS AI chat) ---
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-keep class okhttp3.** { *; }

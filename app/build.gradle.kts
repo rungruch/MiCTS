@@ -108,6 +108,8 @@ dependencies {
     implementation(libs.hiddenapibypass)
     add("MiCTSImplementation", libs.mlkit.text.recognition)
     add("MiCTSImplementation", libs.mlkit.text.recognition.chinese)
+    add("MiCTSImplementation", libs.okhttp)
+    add("MiCTSImplementation", libs.androidx.security.crypto)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.core.ktx)

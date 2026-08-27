@@ -52,4 +52,4 @@
 - Bundled Latin and Chinese OCR increases only the MiCTS artifact size; no Play Services model download is required.
 - Object detection, barcode scanning, freehand lasso, in-app translation, screenshot history, analytics, root spoofing, and private Google entitlement changes remain out of scope.
 - The fallback shares the selected region by default; full-screen Lens is always an explicit secondary action.
-- MiCTS itself performs no network upload. Network use occurs only after the user explicitly hands text or an image to an external Search, Translate, browser, or Lens app.
+- MiCTS performs no network upload for capture or local OCR. When the opt-in AI assistant is enabled (off by default), the "Ask AI" action sends the selected region and recognized text only to the user's configured third-party API endpoint. Network use also occurs if the user explicitly hands text or an image to an external Search, Translate, browser, or Lens app.

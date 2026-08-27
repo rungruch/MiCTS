@@ -41,7 +41,7 @@ Settings offers four trigger strategies:
 
 The fallback recognizes Latin and Chinese text locally with models bundled in MiCTS. You can tap detected text or draw a rectangle, pinch to zoom, then Copy, Search, Translate, or send the selected region to Google Lens. Full-screen Lens is available from the editor's overflow menu. Text recognition can be disabled in Settings without disabling Lens.
 
-The Lens path is a fallback, not native Circle to Search. At most one temporary capture is kept in the app cache, and MiCTS does not upload the image or recognized text itself. Search, Translate, and Lens receive content only after you explicitly tap their action, and those external apps or websites apply their own privacy policies.
+The Lens path is a fallback, not native Circle to Search. At most one temporary capture is kept in the app cache, and MiCTS performs no network upload for capture or local OCR. An optional "Ask AI" assistant is available (off by default); when explicitly configured and triggered, only the selected region and recognized text are sent to your configured OpenAI-compatible endpoint. Search, Translate, and Lens receive content only after you explicitly tap their action, and those external apps or websites apply their own privacy policies.
 
 ### Capture permission and privacy
 

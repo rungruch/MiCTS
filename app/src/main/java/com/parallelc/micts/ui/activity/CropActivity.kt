@@ -29,13 +29,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -44,16 +49,21 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +77,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -85,6 +97,8 @@ import com.parallelc.micts.data.CaptureFiles
 import com.parallelc.micts.data.ExternalActionKind
 import com.parallelc.micts.data.ExternalActionResult
 import com.parallelc.micts.data.LensShareGateway
+import com.parallelc.micts.domain.AiChatMessage
+import com.parallelc.micts.domain.AiMessageRole
 import com.parallelc.micts.domain.CaptureFailureReason
 import com.parallelc.micts.domain.CropGeometry
 import com.parallelc.micts.domain.CropHandle
@@ -159,6 +173,10 @@ class CropActivity : ComponentActivity() {
                     onCancel = ::cancel,
                     onDismissLensUnavailable = { lensUnavailable = false },
                     onOpenGoogleStore = ::openGoogleStore,
+                    onAskAiInitial = { viewModel.askAi(getString(R.string.ai_summarize_prompt), isInitial = true) },
+                    onSendAiMessage = { viewModel.askAi(it, isInitial = false) },
+                    onRetryAi = viewModel::retryAi,
+                    onCopyText = { text -> runTextAction(externalActions.copy(text)) },
                 )
                 browserFallback?.let { fallback ->
                     BrowserFallbackDialog(
@@ -327,8 +345,13 @@ private fun CropRoute(
     onCancel: () -> Unit,
     onDismissLensUnavailable: () -> Unit,
     onOpenGoogleStore: () -> Unit,
+    onAskAiInitial: () -> Unit,
+    onSendAiMessage: (String) -> Unit,
+    onRetryAi: () -> Unit,
+    onCopyText: (String) -> Unit,
 ) {
     var overflowExpanded by remember { mutableStateOf(false) }
+    var showAiChat by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -398,12 +421,27 @@ private fun CropRoute(
                 onSearch = onSearch,
                 onTranslate = onTranslate,
                 onLens = onLens,
+                onAskAi = {
+                    showAiChat = true
+                    if (state.aiConversation.messages.isEmpty()) {
+                        onAskAiInitial()
+                    }
+                },
                 modifier = Modifier.padding(padding),
             )
         }
     }
     if (lensUnavailable) {
         LensUnavailableDialog(onDismissLensUnavailable, onOpenGoogleStore)
+    }
+    if (showAiChat) {
+        AiChatSheet(
+            state = state,
+            onDismiss = { showAiChat = false },
+            onSendMessage = onSendAiMessage,
+            onRetry = onRetryAi,
+            onCopyMessage = onCopyText,
+        )
     }
 }
 
@@ -419,6 +457,7 @@ internal fun CropScreen(
     onSearch: () -> Unit,
     onTranslate: () -> Unit,
     onLens: () -> Unit,
+    onAskAi: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -430,8 +469,8 @@ internal fun CropScreen(
                     onRetryRecognition, Modifier.weight(1f).fillMaxHeight(),
                 )
                 EditorActions(
-                    state.selectedText, state.isActing, true, onCopy, onSearch, onTranslate,
-                    onLens, Modifier.width(132.dp).fillMaxHeight(),
+                    state.selectedText, state.isActing, state.aiConfigured, true, onCopy, onSearch, onTranslate,
+                    onLens, onAskAi, Modifier.width(132.dp).fillMaxHeight(),
                 )
             }
         } else {
@@ -441,8 +480,8 @@ internal fun CropScreen(
                     onRetryRecognition, Modifier.weight(1f).fillMaxWidth(),
                 )
                 EditorActions(
-                    state.selectedText, state.isActing, false, onCopy, onSearch, onTranslate,
-                    onLens, Modifier.fillMaxWidth(),
+                    state.selectedText, state.isActing, state.aiConfigured, false, onCopy, onSearch, onTranslate,
+                    onLens, onAskAi, Modifier.fillMaxWidth(),
                 )
             }
         }
@@ -524,11 +563,13 @@ private fun RecognitionStatusChip(status: TextRecognitionStatus, onRetry: () -> 
 private fun EditorActions(
     selectedText: String,
     isActing: Boolean,
+    aiVisible: Boolean,
     vertical: Boolean,
     onCopy: () -> Unit,
     onSearch: () -> Unit,
     onTranslate: () -> Unit,
     onLens: () -> Unit,
+    onAskAi: () -> Unit,
     modifier: Modifier,
 ) {
     val availability = EditorActionPolicy.availability(selectedText, isActing)
@@ -549,6 +590,12 @@ private fun EditorActions(
                 stringResource(R.string.translate_text), { Icon(Icons.Default.Translate, null) },
                 availability.translate, onTranslate, Modifier.fillMaxWidth(),
             )
+            if (aiVisible) {
+                EditorAction(
+                    stringResource(R.string.ask_ai), { Icon(Icons.Default.AutoAwesome, null) },
+                    !isActing, onAskAi, Modifier.fillMaxWidth(),
+                )
+            }
             LensButton(availability.lens, isActing, onLens, Modifier.fillMaxWidth())
         }
     } else {
@@ -569,6 +616,12 @@ private fun EditorActions(
                 stringResource(R.string.translate_text), { Icon(Icons.Default.Translate, null) },
                 availability.translate, onTranslate, Modifier.weight(1.1f),
             )
+            if (aiVisible) {
+                EditorAction(
+                    stringResource(R.string.ask_ai), { Icon(Icons.Default.AutoAwesome, null) },
+                    !isActing, onAskAi, Modifier.weight(1.1f),
+                )
+            }
             LensButton(availability.lens, isActing, onLens, Modifier.weight(1.3f))
         }
     }
@@ -885,4 +938,228 @@ private fun captureFailureMessage(reason: CaptureFailureReason): String = when (
     CaptureFailureReason.WRITE_FAILED -> stringResource(R.string.capture_write_failed)
     CaptureFailureReason.CONSENT_EXPIRED -> stringResource(R.string.capture_consent_expired)
     CaptureFailureReason.UNKNOWN -> stringResource(R.string.capture_unknown_error)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AiChatSheet(
+    state: CropEditorUiState,
+    onDismiss: () -> Unit,
+    onSendMessage: (String) -> Unit,
+    onRetry: () -> Unit,
+    onCopyMessage: (String) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var inputText by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(state.aiConversation.messages.size, state.aiConversation.isLoading) {
+        val count = state.aiConversation.messages.size + (if (state.aiConversation.isLoading) 1 else 0)
+        if (count > 0) {
+            listState.animateScrollToItem(count - 1)
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.85f)
+                .padding(horizontal = 16.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.ai_chat_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+
+            HorizontalDivider()
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(state.aiConversation.messages) { message ->
+                    AiMessageBubble(message, onCopyMessage)
+                }
+
+                if (state.aiConversation.isLoading) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.finding_text),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                state.aiConversation.error?.let { errorText ->
+                    item {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = errorText,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                TextButton(
+                                    onClick = onRetry,
+                                    modifier = Modifier.align(Alignment.End),
+                                ) {
+                                    Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(stringResource(R.string.ai_retry))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = inputText,
+                    onValueChange = { inputText = it },
+                    placeholder = { Text(stringResource(R.string.ai_chat_placeholder)) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp),
+                    maxLines = 4,
+                    enabled = !state.aiConversation.isLoading,
+                )
+                IconButton(
+                    onClick = {
+                        val textToSend = inputText.trim()
+                        if (textToSend.isNotBlank()) {
+                            inputText = ""
+                            onSendMessage(textToSend)
+                        }
+                    },
+                    enabled = inputText.isNotBlank() && !state.aiConversation.isLoading,
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = stringResource(R.string.ai_send),
+                        tint = if (inputText.isNotBlank() && !state.aiConversation.isLoading) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiMessageBubble(
+    message: AiChatMessage,
+    onCopyMessage: (String) -> Unit,
+) {
+    val isUser = message.role == AiMessageRole.USER
+    val alignment = if (isUser) Alignment.End else Alignment.Start
+    val containerColor = if (isUser) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val contentColor = if (isUser) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+
+    val displayText = if (isUser && message.text.startsWith("Recognized text from screenshot:\n---")) {
+        val parts = message.text.split("\n---\n")
+        if (parts.size >= 3) {
+            parts.last().trim()
+        } else {
+            message.text
+        }
+    } else {
+        message.text
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = alignment,
+    ) {
+        Surface(
+            color = containerColor,
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.widthIn(max = 320.dp),
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                SelectionContainer {
+                    Text(
+                        text = displayText,
+                        color = contentColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                if (!isUser) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        IconButton(
+                            onClick = { onCopyMessage(displayText) },
+                            modifier = Modifier.size(24.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = stringResource(R.string.ai_copy_message),
+                                modifier = Modifier.size(16.dp),
+                                tint = contentColor.copy(alpha = 0.7f),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

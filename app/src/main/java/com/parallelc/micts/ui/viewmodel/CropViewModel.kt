@@ -12,9 +12,17 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.parallelc.micts.config.AppConfig
+import com.parallelc.micts.data.AiGateway
+import com.parallelc.micts.data.AiGatewayFactory
+import com.parallelc.micts.data.AiImageEncoder
+import com.parallelc.micts.data.AiKeyStorageFactory
 import com.parallelc.micts.data.CaptureFiles
 import com.parallelc.micts.data.TextRecognitionGateway
 import com.parallelc.micts.data.TextRecognitionGatewayFactory
+import com.parallelc.micts.domain.AiChatMessage
+import com.parallelc.micts.domain.AiConversationState
+import com.parallelc.micts.domain.AiMessageRole
+import com.parallelc.micts.domain.AiPromptBuilder
 import com.parallelc.micts.domain.CaptureFailureReason
 import com.parallelc.micts.domain.CropGeometry
 import com.parallelc.micts.domain.FloatRect
@@ -53,6 +61,9 @@ data class CropEditorUiState(
     val selectedText: String = "",
     val recognitionStatus: TextRecognitionStatus = TextRecognitionStatus.DISABLED,
     val isActing: Boolean = false,
+    val aiConversation: AiConversationState = AiConversationState(),
+    val aiEnabled: Boolean = false,
+    val aiConfigured: Boolean = false,
 )
 
 class CropViewModel(
@@ -82,14 +93,35 @@ class CropViewModel(
         }
     }
 
-    private val recognitionEnabled = application.getSharedPreferences(
-        AppConfig.CONFIG_NAME,
-        Context.MODE_PRIVATE,
-    ).getBoolean(
+    private val prefs = application.getSharedPreferences(AppConfig.CONFIG_NAME, Context.MODE_PRIVATE)
+    private val aiKeyStorage = AiKeyStorageFactory.create(application)
+
+    private val recognitionEnabled = prefs.getBoolean(
         AppConfig.KEY_LOCAL_TEXT_RECOGNITION,
         AppConfig.DEFAULT_CONFIG[AppConfig.KEY_LOCAL_TEXT_RECOGNITION] as Boolean,
     )
+    val aiEnabled: Boolean = prefs.getBoolean(
+        AppConfig.KEY_AI_ENABLED,
+        AppConfig.DEFAULT_CONFIG[AppConfig.KEY_AI_ENABLED] as Boolean,
+    )
+    val aiBaseUrl: String = prefs.getString(
+        AppConfig.KEY_AI_BASE_URL,
+        AppConfig.DEFAULT_AI_BASE_URL,
+    ) ?: AppConfig.DEFAULT_AI_BASE_URL
+    val aiApiKey: String = aiKeyStorage.getApiKey()
+    val aiModel: String = prefs.getString(
+        AppConfig.KEY_AI_MODEL,
+        AppConfig.DEFAULT_AI_MODEL,
+    ) ?: AppConfig.DEFAULT_AI_MODEL
+    val aiSendImage: Boolean = prefs.getBoolean(
+        AppConfig.KEY_AI_SEND_IMAGE,
+        AppConfig.DEFAULT_CONFIG[AppConfig.KEY_AI_SEND_IMAGE] as Boolean,
+    )
+    val aiConfigured: Boolean = aiEnabled && aiApiKey.isNotBlank() && aiModel.isNotBlank() && aiBaseUrl.isNotBlank()
+
     private var recognitionGateway: TextRecognitionGateway? = null
+    private var aiGateway: AiGateway? = null
+
     private val _state = MutableStateFlow(
         CropEditorUiState(
             viewport = restoredViewport(),
@@ -98,6 +130,8 @@ class CropViewModel(
             } else {
                 TextRecognitionStatus.DISABLED
             },
+            aiEnabled = aiEnabled,
+            aiConfigured = aiConfigured,
         ),
     )
     val state: StateFlow<CropEditorUiState> = _state.asStateFlow()
@@ -238,8 +272,108 @@ class CropViewModel(
         panYFraction = savedStateHandle[STATE_VIEWPORT_PAN_Y] ?: 0f,
     )
 
+    fun askAi(question: String, isInitial: Boolean = false) {
+        val currentConversation = _state.value.aiConversation
+        if (currentConversation.isLoading) return
+
+        val bitmap = (_state.value.content as? CaptureContentState.Ready)?.bitmap
+        val selection = _state.value.selection
+
+        val imageBase64Url = if (aiSendImage && isInitial && bitmap != null && selection != null) {
+            val cropRect = CropGeometry.toIntRect(selection, bitmap.width, bitmap.height)
+            AiImageEncoder.encodeRegionToBase64(bitmap, cropRect)
+        } else {
+            null
+        }
+
+        val allLinesText = _state.value.recognizedLines.joinToString("\n") { it.text.trim() }
+        val promptText = if (isInitial) {
+            AiPromptBuilder.buildUserQuestion(_state.value.selectedText, allLinesText, question)
+        } else {
+            question.trim()
+        }
+
+        val userMessage = AiChatMessage(
+            role = AiMessageRole.USER,
+            text = promptText,
+            imageBase64Url = imageBase64Url,
+        )
+
+        val updatedMessages = currentConversation.messages + userMessage
+        _state.update {
+            it.copy(
+                aiConversation = it.aiConversation.copy(
+                    messages = updatedMessages,
+                    isLoading = true,
+                    error = null,
+                )
+            )
+        }
+
+        viewModelScope.launch {
+            val gateway = aiGateway ?: AiGatewayFactory.create(aiBaseUrl, aiApiKey).also {
+                aiGateway = it
+            }
+
+            val result = withContext(Dispatchers.Default) {
+                gateway.chat(updatedMessages, aiModel, aiSendImage)
+            }
+
+            result.fold(
+                onSuccess = { assistantReply ->
+                    val assistantMessage = AiChatMessage(
+                        role = AiMessageRole.ASSISTANT,
+                        text = assistantReply,
+                    )
+                    _state.update {
+                        it.copy(
+                            aiConversation = it.aiConversation.copy(
+                                messages = updatedMessages + assistantMessage,
+                                isLoading = false,
+                                error = null,
+                            )
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _state.update {
+                        it.copy(
+                            aiConversation = it.aiConversation.copy(
+                                isLoading = false,
+                                error = error.localizedMessage ?: error.message ?: "Unknown error",
+                            )
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun retryAi() {
+        val lastUserMessage = _state.value.aiConversation.messages.lastOrNull { it.role == AiMessageRole.USER }
+        if (lastUserMessage != null) {
+            val historyWithoutLast = _state.value.aiConversation.messages.dropLast(1)
+            _state.update {
+                it.copy(
+                    aiConversation = it.aiConversation.copy(
+                        messages = historyWithoutLast,
+                        error = null,
+                    )
+                )
+            }
+            askAi(lastUserMessage.text, isInitial = false)
+        }
+    }
+
+    fun resetAiConversation() {
+        _state.update {
+            it.copy(aiConversation = AiConversationState())
+        }
+    }
+
     override fun onCleared() {
         recognitionGateway?.close()
+        aiGateway?.close()
         (_state.value.content as? CaptureContentState.Ready)?.bitmap?.recycle()
         super.onCleared()
     }

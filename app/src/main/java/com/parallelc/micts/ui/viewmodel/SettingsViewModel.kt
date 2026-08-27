@@ -15,6 +15,8 @@ import com.parallelc.micts.config.AppConfig
 import com.parallelc.micts.config.Language
 import com.parallelc.micts.config.TriggerService
 import com.parallelc.micts.config.XposedConfig
+import com.parallelc.micts.data.AiGatewayFactory
+import com.parallelc.micts.data.AiKeyStorageFactory
 import com.parallelc.micts.data.CapturePreferenceStore
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedService.OnScopeEventListener
@@ -26,6 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 @SuppressLint("PrivateApi")
@@ -57,11 +60,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     var scrollState = ScrollState(0)
     var triggerServiceExpanded = mutableStateOf(false)
 
+    private val aiKeyStorage = AiKeyStorageFactory.create(application)
+
     init {
         // Run the one-time capture-permission migration before exposing preferences to Compose.
         CapturePreferenceStore(application)
         appConfigPref = application.getSharedPreferences(AppConfig.CONFIG_NAME, MODE_PRIVATE)
-        _appConfig.value = AppConfig.DEFAULT_CONFIG + appConfigPref.all.filterValues { it != null }.mapValues { it.value as Any }
+        val legacyKey = appConfigPref.getString(AppConfig.KEY_AI_API_KEY, null)
+        if (!legacyKey.isNullOrEmpty()) {
+            aiKeyStorage.setApiKey(legacyKey)
+            appConfigPref.edit().remove(AppConfig.KEY_AI_API_KEY).apply()
+        }
+        val secureApiKey = aiKeyStorage.getApiKey()
+        _appConfig.value = AppConfig.DEFAULT_CONFIG + appConfigPref.all.filterValues { it != null }.mapValues { it.value as Any } + mapOf(AppConfig.KEY_AI_API_KEY to secureApiKey)
         _locale.value = Language.entries[_appConfig.value[AppConfig.KEY_LANGUAGE] as Int].toLocale()
         XposedServiceHelper.registerListener(object : XposedServiceHelper.OnServiceListener {
             override fun onServiceBind(service: XposedService) {
@@ -100,11 +111,29 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             }
         }
         viewModelScope.launch(Dispatchers.IO) {
+            if (key == AppConfig.KEY_AI_API_KEY) {
+                aiKeyStorage.setApiKey(value as String)
+                return@launch
+            }
             when (value) {
                 is Long -> appConfigPref.edit().putLong(key, value).apply()
                 is Int -> appConfigPref.edit().putInt(key, value).apply()
                 is Boolean -> appConfigPref.edit().putBoolean(key, value).apply()
                 is String -> appConfigPref.edit().putString(key, value).apply()
+            }
+        }
+    }
+
+    fun testAiConnection(baseUrl: String, apiKey: String, onResult: (Result<Int>) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val gateway = AiGatewayFactory.create(baseUrl, apiKey)
+            val result = try {
+                gateway.testConnection()
+            } finally {
+                gateway.close()
+            }
+            withContext(Dispatchers.Main) {
+                onResult(result)
             }
         }
     }
