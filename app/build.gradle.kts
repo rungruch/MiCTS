@@ -90,6 +90,8 @@ kotlin {
 
 dependencies {
     implementation(libs.lifecycle.runtime.ktx)
+    implementation(libs.lifecycle.viewmodel.ktx)
+    implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.activity.compose)
     implementation(platform(libs.compose.bom))
     implementation(libs.material)
@@ -104,6 +106,8 @@ dependencies {
     compileOnly(libs.libxposed.api)
     implementation(libs.libxposed.service)
     implementation(libs.hiddenapibypass)
+    add("MiCTSImplementation", libs.mlkit.text.recognition)
+    add("MiCTSImplementation", libs.mlkit.text.recognition.chinese)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.core.ktx)

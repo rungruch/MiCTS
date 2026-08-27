@@ -16,4 +16,6 @@ object CaptureFiles {
         if (!directory.exists()) directory.mkdirs()
         capture(context).delete()
     }
+
+    fun deleteCapture(context: Context): Boolean = capture(context).delete()
 }

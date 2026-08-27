@@ -3,6 +3,7 @@ package com.parallelc.micts.domain
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.min
 
 data class FloatPoint(val x: Float, val y: Float)
@@ -17,10 +18,23 @@ data class FloatRect(
 ) {
     val width: Float get() = right - left
     val height: Float get() = bottom - top
+    val center: FloatPoint get() = FloatPoint((left + right) / 2f, (top + bottom) / 2f)
 
     fun contains(point: FloatPoint): Boolean =
         point.x in left..right && point.y in top..bottom
+
+    fun intersectionArea(other: FloatRect): Float {
+        val overlapWidth = (min(right, other.right) - max(left, other.left)).coerceAtLeast(0f)
+        val overlapHeight = (min(bottom, other.bottom) - max(top, other.top)).coerceAtLeast(0f)
+        return overlapWidth * overlapHeight
+    }
 }
+
+data class ViewportState(
+    val zoom: Float = 1f,
+    val panXFraction: Float = 0f,
+    val panYFraction: Float = 0f,
+)
 
 data class FitCenterTransform(
     val scale: Float,
@@ -80,6 +94,110 @@ object CropGeometry {
         val left = bounds.left + (bounds.width - width) / 2f
         val top = bounds.top + (bounds.height - height) / 2f
         return FloatRect(left, top, left + width, top + height)
+    }
+
+    fun viewport(
+        image: FloatSize,
+        container: FloatSize,
+        state: ViewportState,
+    ): FitCenterTransform {
+        val base = fitCenter(image, container)
+        val zoom = state.zoom.coerceIn(1f, 5f)
+        val scale = base.scale * zoom
+        val displayedWidth = image.width * scale
+        val displayedHeight = image.height * scale
+        val centeredX = (container.width - displayedWidth) / 2f
+        val centeredY = (container.height - displayedHeight) / 2f
+        val desiredX = centeredX + state.panXFraction * container.width
+        val desiredY = centeredY + state.panYFraction * container.height
+        return FitCenterTransform(
+            scale = scale,
+            offsetX = clampViewportOffset(desiredX, displayedWidth, container.width),
+            offsetY = clampViewportOffset(desiredY, displayedHeight, container.height),
+            displayedWidth = displayedWidth,
+            displayedHeight = displayedHeight,
+        )
+    }
+
+    fun transformViewport(
+        state: ViewportState,
+        centroid: FloatPoint,
+        pan: FloatPoint,
+        zoomChange: Float,
+        image: FloatSize,
+        container: FloatSize,
+    ): ViewportState {
+        val old = viewport(image, container, state)
+        val anchor = viewToImage(centroid, old)
+        val newZoom = (state.zoom * zoomChange).coerceIn(1f, 5f)
+        val newScale = fitCenter(image, container).scale * newZoom
+        val displayedWidth = image.width * newScale
+        val displayedHeight = image.height * newScale
+        val centeredX = (container.width - displayedWidth) / 2f
+        val centeredY = (container.height - displayedHeight) / 2f
+        val desiredX = centroid.x + pan.x - anchor.x * newScale
+        val desiredY = centroid.y + pan.y - anchor.y * newScale
+        val offsetX = clampViewportOffset(desiredX, displayedWidth, container.width)
+        val offsetY = clampViewportOffset(desiredY, displayedHeight, container.height)
+        return ViewportState(
+            zoom = newZoom,
+            panXFraction = if (container.width == 0f) 0f else (offsetX - centeredX) / container.width,
+            panYFraction = if (container.height == 0f) 0f else (offsetY - centeredY) / container.height,
+        )
+    }
+
+    fun imageToView(point: FloatPoint, transform: FitCenterTransform): FloatPoint = FloatPoint(
+        x = point.x * transform.scale + transform.offsetX,
+        y = point.y * transform.scale + transform.offsetY,
+    )
+
+    fun viewToImage(point: FloatPoint, transform: FitCenterTransform): FloatPoint = FloatPoint(
+        x = (point.x - transform.offsetX) / transform.scale,
+        y = (point.y - transform.offsetY) / transform.scale,
+    )
+
+    fun imageToView(rect: FloatRect, transform: FitCenterTransform): FloatRect {
+        val topLeft = imageToView(FloatPoint(rect.left, rect.top), transform)
+        val bottomRight = imageToView(FloatPoint(rect.right, rect.bottom), transform)
+        return FloatRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y)
+    }
+
+    fun clampToBounds(rect: FloatRect, bounds: FloatRect, minSize: Float): FloatRect {
+        val safeMin = minSize.coerceAtMost(min(bounds.width, bounds.height))
+        val width = rect.width.coerceIn(safeMin, bounds.width)
+        val height = rect.height.coerceIn(safeMin, bounds.height)
+        val left = rect.left.coerceIn(bounds.left, bounds.right - width)
+        val top = rect.top.coerceIn(bounds.top, bounds.bottom - height)
+        return FloatRect(left, top, left + width, top + height)
+    }
+
+    fun rectFromPoints(
+        start: FloatPoint,
+        end: FloatPoint,
+        bounds: FloatRect,
+        minSize: Float,
+    ): FloatRect {
+        val raw = FloatRect(
+            left = min(start.x, end.x),
+            top = min(start.y, end.y),
+            right = max(start.x, end.x),
+            bottom = max(start.y, end.y),
+        )
+        val expanded = FloatRect(
+            raw.left,
+            raw.top,
+            max(raw.right, raw.left + minSize),
+            max(raw.bottom, raw.top + minSize),
+        )
+        return clampToBounds(expanded, bounds, minSize)
+    }
+
+    fun toIntRect(rect: FloatRect, imageWidth: Int, imageHeight: Int): IntCropRect {
+        val left = floor(rect.left).toInt().coerceIn(0, imageWidth - 1)
+        val top = floor(rect.top).toInt().coerceIn(0, imageHeight - 1)
+        val right = ceil(rect.right).toInt().coerceIn(left + 1, imageWidth)
+        val bottom = ceil(rect.bottom).toInt().coerceIn(top + 1, imageHeight)
+        return IntCropRect(left, top, right, bottom)
     }
 
     fun hitTest(rect: FloatRect, point: FloatPoint, handleRadius: Float): CropHandle {
@@ -158,4 +276,11 @@ object CropGeometry {
             .toInt().coerceIn(top + 1, imageHeight)
         return IntCropRect(left, top, right, bottom)
     }
+
+    private fun clampViewportOffset(offset: Float, displayedSize: Float, containerSize: Float): Float =
+        if (displayedSize <= containerSize) {
+            (containerSize - displayedSize) / 2f
+        } else {
+            offset.coerceIn(containerSize - displayedSize, 0f)
+        }
 }

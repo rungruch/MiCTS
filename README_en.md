@@ -31,9 +31,11 @@ Trigger Circle to Search on any Android 9–16 device
 MiCTS defaults to `Auto: native first`. The first launch tries real Circle to Search. On the next launch, MiCTS asks whether the native interface appeared:
 
 - Choose `Yes, keep native` to continue using real Circle to Search.
-- Choose `No, use Lens fallback` if Google disables Circle to Search. Android will ask for screen-capture permission, MiCTS will capture one frame, let you crop it, and send only that crop to Google Lens.
+- Choose `No, use Lens fallback` if Google disables Circle to Search. Android will ask for screen-capture permission and MiCTS will open its smart screen-search editor.
 
-The Lens path is a fallback, not native Circle to Search. It asks for capture consent on every trigger, stores at most one temporary capture in the app cache, and does not upload the image itself.
+The fallback recognizes Latin and Chinese text locally with models bundled in MiCTS. You can tap detected text or draw a rectangle, pinch to zoom, then Copy, Search, Translate, or send the selected region to Google Lens. Full-screen Lens is available from the editor's overflow menu. Text recognition can be disabled in Settings without disabling Lens.
+
+The Lens path is a fallback, not native Circle to Search. It asks for capture consent on every trigger, stores at most one temporary capture in the app cache, and does not upload the image or recognized text itself. Search, Translate, and Lens receive content only after you explicitly tap their action, and those external apps or websites apply their own privacy policies.
    
 
 ## Settings
@@ -48,6 +50,7 @@ The Lens path is a fallback, not native Circle to Search. It asks for capture co
 - Tile trigger delay: The delay when triggering by the Quick Settings panel tile
 - Trigger strategy: Choose Auto, native Circle to Search only, or the Google Lens fallback
 - Reset Auto detection: Ask again whether the native trigger works
+- Recognize text locally: Enable the bundled offline Latin and Chinese models used by Copy, Search, and Translate
 - Compatibility report: Shows the Google app, assistant, Lens, Android framework, and selected trigger-service status without claiming access to Google's private device eligibility
 
 ### Module Settings

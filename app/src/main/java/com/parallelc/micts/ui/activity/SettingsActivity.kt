@@ -270,6 +270,23 @@ fun SettingsPage(
 
         if (BuildConfig.APP_NAME == "MiCTS") {
             TriggerStrategySettings(appConfig, viewModel)
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.local_text_recognition)) },
+                supportingContent = {
+                    Text(stringResource(R.string.local_text_recognition_summary))
+                },
+                trailingContent = {
+                    Switch(
+                        checked = appConfig[AppConfig.KEY_LOCAL_TEXT_RECOGNITION] as Boolean,
+                        onCheckedChange = { enabled ->
+                            viewModel.updateAppConfig(
+                                AppConfig.KEY_LOCAL_TEXT_RECOGNITION,
+                                enabled,
+                            )
+                        },
+                    )
+                },
+            )
             val selectedTriggerService = (xposedConfig[XposedConfig.KEY_TRIGGER_SERVICE] as? Int)
                 ?.let { ordinal -> TriggerService.entries.getOrNull(ordinal)?.name }
                 ?: TriggerService.VIS.name

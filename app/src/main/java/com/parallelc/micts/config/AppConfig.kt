@@ -27,6 +27,7 @@ object AppConfig {
     const val KEY_ASYNC_TRIGGER = "async_trigger"
     const val KEY_TRIGGER_STRATEGY = "trigger_strategy"
     const val KEY_AUTO_RESOLUTION = "auto_resolution"
+    const val KEY_LOCAL_TEXT_RECOGNITION = "local_text_recognition"
 
     val DEFAULT_CONFIG = mapOf<String, Any>(
         KEY_LANGUAGE to Language.FollowSystem.ordinal,
@@ -36,5 +37,6 @@ object AppConfig {
         KEY_ASYNC_TRIGGER to false,
         KEY_TRIGGER_STRATEGY to "AUTO",
         KEY_AUTO_RESOLUTION to "UNKNOWN",
+        KEY_LOCAL_TEXT_RECOGNITION to true,
     )
 }

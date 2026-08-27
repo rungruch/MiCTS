@@ -3,16 +3,21 @@ package com.parallelc.micts.ui
 import android.graphics.Bitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.parallelc.micts.domain.IntCropRect
+import com.parallelc.micts.domain.FloatRect
+import com.parallelc.micts.domain.ViewportState
 import com.parallelc.micts.ui.activity.CaptureProblem
 import com.parallelc.micts.ui.activity.CropScreen
 import com.parallelc.micts.ui.activity.LensUnavailableDialog
 import com.parallelc.micts.ui.activity.NativeConfirmationDialog
 import com.parallelc.micts.ui.theme.MiCTSTheme
+import com.parallelc.micts.ui.viewmodel.CaptureContentState
+import com.parallelc.micts.ui.viewmodel.CropEditorUiState
+import com.parallelc.micts.ui.viewmodel.TextRecognitionStatus
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -127,24 +132,105 @@ class FallbackUiTest {
     }
 
     @Test
-    fun cropScreenProducesPixelSelectionForFakeLensGateway() {
+    fun cropScreenRoutesSelectedRegionToFakeLensGateway() {
         val bitmap = Bitmap.createBitmap(200, 400, Bitmap.Config.ARGB_8888)
-        var submittedCrop: IntCropRect? = null
+        var lensSelected = false
         composeRule.setContent {
             MiCTSTheme {
                 CropScreen(
+                    state = readyState(bitmap),
                     bitmap = bitmap,
-                    isSearching = false,
-                    onSearch = { submittedCrop = it },
-                    onRetake = {},
-                    onCancel = {},
+                    onSelectionChanged = {},
+                    onViewportChanged = {},
+                    onLineTapped = {},
+                    onRetryRecognition = {},
+                    onCopy = {},
+                    onSearch = {},
+                    onTranslate = {},
+                    onLens = { lensSelected = true },
                 )
             }
         }
 
-        composeRule.onNodeWithText("Search with Lens").assertIsEnabled().performClick()
-        assertTrue((submittedCrop?.width ?: 0) > 0)
-        assertTrue((submittedCrop?.height ?: 0) > 0)
-        bitmap.recycle()
+        composeRule.onNodeWithText("Lens").assertIsEnabled().performClick()
+        assertTrue(lensSelected)
     }
+
+    @Test
+    fun textActionsEnableOnlyWhenOcrTextIsSelected() {
+        val bitmap = Bitmap.createBitmap(200, 400, Bitmap.Config.ARGB_8888)
+        composeRule.setContent {
+            MiCTSTheme {
+                CropScreen(
+                    state = readyState(bitmap),
+                    bitmap = bitmap,
+                    onSelectionChanged = {},
+                    onViewportChanged = {},
+                    onLineTapped = {},
+                    onRetryRecognition = {},
+                    onCopy = {},
+                    onSearch = {},
+                    onTranslate = {},
+                    onLens = {},
+                )
+            }
+        }
+        composeRule.onNodeWithText("Copy").assertIsNotEnabled()
+        composeRule.onNodeWithText("Lens").assertIsEnabled()
+
+        composeRule.setContent {
+            MiCTSTheme {
+                CropScreen(
+                    state = readyState(bitmap).copy(selectedText = "Huawei MatePad"),
+                    bitmap = bitmap,
+                    onSelectionChanged = {},
+                    onViewportChanged = {},
+                    onLineTapped = {},
+                    onRetryRecognition = {},
+                    onCopy = {},
+                    onSearch = {},
+                    onTranslate = {},
+                    onLens = {},
+                )
+            }
+        }
+        composeRule.onNodeWithText("Huawei MatePad").assertIsDisplayed()
+        composeRule.onNodeWithText("Copy").assertIsEnabled()
+        composeRule.onNodeWithText("Search").assertIsEnabled()
+        composeRule.onNodeWithText("Translate").assertIsEnabled()
+    }
+
+    @Test
+    fun recognitionFailureOffersRetryWithoutDisablingLens() {
+        val bitmap = Bitmap.createBitmap(200, 400, Bitmap.Config.ARGB_8888)
+        var retried = false
+        composeRule.setContent {
+            MiCTSTheme {
+                CropScreen(
+                    state = readyState(bitmap).copy(
+                        recognitionStatus = TextRecognitionStatus.FAILED,
+                    ),
+                    bitmap = bitmap,
+                    onSelectionChanged = {},
+                    onViewportChanged = {},
+                    onLineTapped = {},
+                    onRetryRecognition = { retried = true },
+                    onCopy = {},
+                    onSearch = {},
+                    onTranslate = {},
+                    onLens = {},
+                )
+            }
+        }
+        composeRule.onNodeWithText("Text recognition failed — tap to retry").performClick()
+        assertTrue(retried)
+        composeRule.onNodeWithText("Lens").assertIsEnabled()
+    }
+
+    private fun readyState(bitmap: Bitmap) = CropEditorUiState(
+        content = CaptureContentState.Ready(bitmap),
+        selection = FloatRect(20f, 40f, 180f, 360f),
+        viewport = ViewportState(),
+        recognitionStatus = TextRecognitionStatus.DISABLED,
+    )
 }

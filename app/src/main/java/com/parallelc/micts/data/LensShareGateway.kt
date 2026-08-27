@@ -3,6 +3,7 @@ package com.parallelc.micts.data
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.content.ActivityNotFoundException
 import android.net.Uri
 import androidx.core.content.FileProvider
 import com.parallelc.micts.BuildConfig
@@ -25,8 +26,14 @@ class LensShareGateway(private val context: Context) {
         )
         val intent = createShareIntent(uri)
         if (intent.resolveActivity(context.packageManager) == null) return false
-        context.startActivity(intent)
-        return true
+        return try {
+            context.startActivity(intent)
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        }
     }
 
     private fun createShareIntent(uri: Uri): Intent = Intent(Intent.ACTION_SEND).apply {

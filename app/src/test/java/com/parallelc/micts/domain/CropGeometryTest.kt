@@ -153,4 +153,60 @@ class CropGeometryTest {
             CropGeometry.hitTest(rect, FloatPoint(20f, 20f), 24f),
         )
     }
+
+    @Test
+    fun viewportZoomKeepsCentroidAnchoredAndClampsPan() {
+        val image = FloatSize(1000f, 1000f)
+        val container = FloatSize(500f, 500f)
+        val zoomed = CropGeometry.transformViewport(
+            state = ViewportState(),
+            centroid = FloatPoint(400f, 250f),
+            pan = FloatPoint(0f, 0f),
+            zoomChange = 2f,
+            image = image,
+            container = container,
+        )
+        val transform = CropGeometry.viewport(image, container, zoomed)
+        val anchored = CropGeometry.imageToView(FloatPoint(800f, 500f), transform)
+        assertEquals(400f, anchored.x, 0.01f)
+        assertEquals(250f, anchored.y, 0.01f)
+
+        val clamped = CropGeometry.transformViewport(
+            state = zoomed,
+            centroid = FloatPoint(250f, 250f),
+            pan = FloatPoint(5000f, 5000f),
+            zoomChange = 1f,
+            image = image,
+            container = container,
+        )
+        val clampedTransform = CropGeometry.viewport(image, container, clamped)
+        assertEquals(0f, clampedTransform.offsetX)
+        assertEquals(0f, clampedTransform.offsetY)
+    }
+
+    @Test
+    fun drawingNewRectangleHonorsMinimumAndImageEdges() {
+        assertEquals(
+            FloatRect(320f, 320f, 400f, 400f),
+            CropGeometry.rectFromPoints(
+                start = FloatPoint(390f, 390f),
+                end = FloatPoint(395f, 395f),
+                bounds = FloatRect(0f, 0f, 400f, 400f),
+                minSize = 80f,
+            ),
+        )
+    }
+
+    @Test
+    fun imageViewCoordinateRoundTripSurvivesLetterboxAndZoom() {
+        val transform = CropGeometry.viewport(
+            image = FloatSize(500f, 1000f),
+            container = FloatSize(800f, 500f),
+            state = ViewportState(zoom = 2.5f, panXFraction = 0.1f, panYFraction = -0.2f),
+        )
+        val source = FloatPoint(123f, 456f)
+        val restored = CropGeometry.viewToImage(CropGeometry.imageToView(source, transform), transform)
+        assertEquals(source.x, restored.x, 0.01f)
+        assertEquals(source.y, restored.y, 0.01f)
+    }
 }
