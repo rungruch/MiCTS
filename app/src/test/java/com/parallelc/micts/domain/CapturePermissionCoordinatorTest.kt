@@ -7,63 +7,69 @@ class CapturePermissionCoordinatorTest {
     private val coordinator = CapturePermissionCoordinator()
 
     @Test
-    fun api28And29ExplainOnceThenRequestProjection() {
-        listOf(28, 29).forEach { api ->
-            assertEquals(
-                CapturePermissionAction.ShowLegacyExplanation,
-                action(api, legacySeen = false),
-            )
-            assertEquals(
-                CapturePermissionAction.RequestMediaProjection,
-                action(api, legacySeen = true),
-            )
+    fun unsetModeShowsSetupOnReusableConsentApis() {
+        listOf(28, 29, 30, 31, 33).forEach { api ->
+            assertEquals(CapturePermissionAction.ShowCaptureSetup, action(api))
         }
     }
 
     @Test
-    fun unsetModeShowsFastSetupOnSupportedApis() {
-        listOf(30, 33, 34, 36).forEach { api ->
-            assertEquals(CapturePermissionAction.ShowFastSetup, action(api))
+    fun rememberConsentCapturesSilentlyOnlyWithStoredToken() {
+        listOf(28, 30, 33).forEach { api ->
+            assertEquals(
+                CapturePermissionAction.CaptureWithStoredConsent,
+                action(api, CaptureMode.REMEMBER_CONSENT, consentStored = true),
+            )
+            assertEquals(
+                CapturePermissionAction.RequestMediaProjection,
+                action(api, CaptureMode.REMEMBER_CONSENT, consentStored = false),
+            )
         }
     }
 
     @Test
     fun askEveryTimeAlwaysRequestsProjection() {
-        FastCaptureAvailability.entries.forEach { availability ->
+        listOf(28, 33, 34, 36).forEach { api ->
             assertEquals(
                 CapturePermissionAction.RequestMediaProjection,
-                action(36, CaptureMode.ASK_EVERY_TIME, availability),
+                action(api, CaptureMode.ASK_EVERY_TIME, consentStored = true),
             )
         }
     }
 
     @Test
-    fun fastModeRoutesReadyConnectingAndUnavailableStates() {
-        listOf(30, 31, 33, 34, 36).forEach { api ->
+    fun android14ExplainsSingleUseConsentOnceThenAlwaysAsks() {
+        listOf(34, 35, 36).forEach { api ->
             assertEquals(
-                CapturePermissionAction.CaptureWithAccessibility,
-                action(api, CaptureMode.FAST_ACCESSIBILITY, FastCaptureAvailability.READY),
+                CapturePermissionAction.ShowConsentExplanation,
+                action(api, explanationSeen = false),
             )
             assertEquals(
-                CapturePermissionAction.WaitForAccessibility,
-                action(api, CaptureMode.FAST_ACCESSIBILITY, FastCaptureAvailability.CONNECTING),
+                CapturePermissionAction.RequestMediaProjection,
+                action(api, explanationSeen = true),
             )
-            listOf(
-                FastCaptureAvailability.DISABLED,
-                FastCaptureAvailability.UNSUPPORTED,
-            ).forEach { availability ->
-                assertEquals(
-                    CapturePermissionAction.ShowAccessibilityRecovery,
-                    action(api, CaptureMode.FAST_ACCESSIBILITY, availability),
-                )
-            }
         }
+    }
+
+    @Test
+    fun android14NeverReusesStoredConsent() {
+        // A restored REMEMBER_CONSENT backup must degrade to ask-every-time
+        // because Android 14+ tokens are single-use.
+        assertEquals(
+            CapturePermissionAction.RequestMediaProjection,
+            action(
+                34,
+                CaptureMode.REMEMBER_CONSENT,
+                consentStored = true,
+                explanationSeen = true,
+            ),
+        )
     }
 
     private fun action(
         api: Int,
         mode: CaptureMode = CaptureMode.UNSET,
-        availability: FastCaptureAvailability = FastCaptureAvailability.DISABLED,
-        legacySeen: Boolean = false,
-    ) = coordinator.nextAction(api, mode, availability, legacySeen)
+        consentStored: Boolean = false,
+        explanationSeen: Boolean = false,
+    ) = coordinator.nextAction(api, mode, consentStored, explanationSeen)
 }

@@ -25,6 +25,7 @@ import android.util.DisplayMetrics
 import android.view.WindowManager
 import com.parallelc.micts.R
 import com.parallelc.micts.data.CaptureFiles
+import com.parallelc.micts.data.ProjectionConsentStore
 import com.parallelc.micts.data.TriggerPreferenceStore
 import com.parallelc.micts.domain.CaptureFailureReason
 import com.parallelc.micts.domain.CaptureResult
@@ -37,14 +38,21 @@ class ScreenCaptureService : Service() {
     companion object {
         private const val EXTRA_RESULT_CODE = "result_code"
         private const val EXTRA_RESULT_DATA = "result_data"
+        private const val EXTRA_FROM_STORED_CONSENT = "from_stored_consent"
         private const val CHANNEL_ID = "screen_capture"
         private const val NOTIFICATION_ID = 2301
         private const val CAPTURE_TIMEOUT_MS = 7_000L
 
-        fun createIntent(context: Context, resultCode: Int, resultData: Intent): Intent =
+        fun createIntent(
+            context: Context,
+            resultCode: Int,
+            resultData: Intent,
+            fromStoredConsent: Boolean = false,
+        ): Intent =
             Intent(context, ScreenCaptureService::class.java).apply {
                 putExtra(EXTRA_RESULT_CODE, resultCode)
                 putExtra(EXTRA_RESULT_DATA, resultData)
+                putExtra(EXTRA_FROM_STORED_CONSENT, fromStoredConsent)
             }
     }
 
@@ -54,10 +62,17 @@ class ScreenCaptureService : Service() {
     private var mediaProjection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
+    private var fromStoredConsent = false
 
     private val projectionCallback = object : MediaProjection.Callback() {
         override fun onStop() {
-            if (!completed.get()) {
+            if (completed.get()) return
+            if (fromStoredConsent) {
+                // A stored consent token that stops right away is dead:
+                // drop it so the next trigger asks for approval once more.
+                ProjectionConsentStore(this@ScreenCaptureService).clear()
+                completeFailure(CaptureFailureReason.CONSENT_EXPIRED)
+            } else {
                 completeFailure(CaptureFailureReason.PROJECTION_STOPPED)
             }
         }
@@ -90,6 +105,7 @@ class ScreenCaptureService : Service() {
             completeFailure(CaptureFailureReason.INVALID_PERMISSION_RESULT)
             return START_NOT_STICKY
         }
+        fromStoredConsent = intent.getBooleanExtra(EXTRA_FROM_STORED_CONSENT, false)
 
         startCaptureForeground()
         CaptureFiles.prepareForCapture(this)
@@ -102,12 +118,18 @@ class ScreenCaptureService : Service() {
     }
 
     private fun beginProjection(resultCode: Int, resultData: Intent) {
+        val projectionManager = getSystemService(MediaProjectionManager::class.java)
+        val projection = runCatching {
+            projectionManager.getMediaProjection(resultCode, resultData)
+        }.getOrElse {
+            onConsentRejected()
+            return
+        } ?: run {
+            onConsentRejected()
+            return
+        }
+
         runCatching {
-            val projectionManager = getSystemService(
-                MediaProjectionManager::class.java,
-            )
-            val projection = projectionManager.getMediaProjection(resultCode, resultData)
-                ?: error("Android did not create a MediaProjection")
             mediaProjection = projection
             projection.registerCallback(projectionCallback, workerHandler)
 
@@ -134,6 +156,17 @@ class ScreenCaptureService : Service() {
                 workerHandler,
             )
         }.onFailure {
+            completeFailure(CaptureFailureReason.SERVICE_START_FAILED)
+        }
+    }
+
+    private fun onConsentRejected() {
+        if (fromStoredConsent) {
+            // Android invalidated the remembered approval (reboot, OEM
+            // policy): clear it so the next trigger asks exactly once more.
+            ProjectionConsentStore(this).clear()
+            completeFailure(CaptureFailureReason.CONSENT_EXPIRED)
+        } else {
             completeFailure(CaptureFailureReason.SERVICE_START_FAILED)
         }
     }

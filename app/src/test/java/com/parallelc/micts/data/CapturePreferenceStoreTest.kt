@@ -9,51 +9,85 @@ import org.junit.Test
 
 class CapturePreferenceStoreTest {
     @Test
-    fun modeAndLegacyExplanationPersist() {
+    fun modeAndConsentExplanationPersist() {
         val backend = InMemoryCapturePreferenceBackend()
-        CapturePreferenceStore(backend).apply {
-            mode = CaptureMode.FAST_ACCESSIBILITY
-            legacyExplanationSeen = true
+        CapturePreferenceStore(backend, apiLevel = 33).apply {
+            mode = CaptureMode.REMEMBER_CONSENT
+            consentExplanationSeen = true
         }
 
-        val restored = CapturePreferenceStore(backend)
-        assertEquals(CaptureMode.FAST_ACCESSIBILITY, restored.mode)
-        assertTrue(restored.legacyExplanationSeen)
+        val restored = CapturePreferenceStore(backend, apiLevel = 33)
+        assertEquals(CaptureMode.REMEMBER_CONSENT, restored.mode)
+        assertTrue(restored.consentExplanationSeen)
     }
 
     @Test
-    fun migrationRemovesObsoleteProjectionStateAndInitializesUnset() {
+    fun freshInstallInitializesUnset() {
+        val store = CapturePreferenceStore(InMemoryCapturePreferenceBackend(), apiLevel = 33)
+        assertEquals(CaptureMode.UNSET, store.mode)
+    }
+
+    @Test
+    fun migrationMapsRemovedFastCaptureToRememberConsentBelowAndroid14() {
+        val backend = backendWithLegacyFastCapture()
+
+        val store = CapturePreferenceStore(backend, apiLevel = 33)
+
+        assertEquals(CaptureMode.REMEMBER_CONSENT, store.mode)
+        assertMigrationCleanup(backend)
+    }
+
+    @Test
+    fun migrationMapsRemovedFastCaptureToAskEveryTimeOnAndroid14() {
+        val backend = backendWithLegacyFastCapture()
+
+        val store = CapturePreferenceStore(backend, apiLevel = 34)
+
+        assertEquals(CaptureMode.ASK_EVERY_TIME, store.mode)
+        assertMigrationCleanup(backend)
+    }
+
+    @Test
+    fun migrationPreservesAskEveryTimeAndUnrelatedSettings() {
         val backend = InMemoryCapturePreferenceBackend().apply {
-            putString("projection_result_data", "stale-token")
-            putString("projection_result_code", "-1")
-            putBoolean("capture_armed", true)
             putString(AppConfig.KEY_CAPTURE_MODE, CaptureMode.ASK_EVERY_TIME.name)
             putString(AppConfig.KEY_TRIGGER_STRATEGY, "NATIVE_ONLY")
             putBoolean(AppConfig.KEY_LOCAL_TEXT_RECOGNITION, false)
         }
 
-        val store = CapturePreferenceStore(backend)
+        val store = CapturePreferenceStore(backend, apiLevel = 31)
 
-        assertEquals(CaptureMode.UNSET, store.mode)
-        assertFalse(backend.contains("projection_result_data"))
-        assertFalse(backend.contains("projection_result_code"))
-        assertFalse(backend.contains("capture_armed"))
+        assertEquals(CaptureMode.ASK_EVERY_TIME, store.mode)
         assertEquals(
             "NATIVE_ONLY",
             backend.getString(AppConfig.KEY_TRIGGER_STRATEGY, "AUTO"),
         )
         assertFalse(backend.getBoolean(AppConfig.KEY_LOCAL_TEXT_RECOGNITION, true))
-        assertEquals(1, backend.getInt(AppConfig.KEY_CAPTURE_PERMISSION_SCHEMA, 0))
     }
 
     @Test
     fun unknownModeUsesUnset() {
         val backend = InMemoryCapturePreferenceBackend().apply {
-            putInt(AppConfig.KEY_CAPTURE_PERMISSION_SCHEMA, 1)
+            putInt(AppConfig.KEY_CAPTURE_PERMISSION_SCHEMA, 2)
             putString(AppConfig.KEY_CAPTURE_MODE, "FUTURE_MODE")
         }
 
-        assertEquals(CaptureMode.UNSET, CapturePreferenceStore(backend).mode)
+        assertEquals(CaptureMode.UNSET, CapturePreferenceStore(backend, apiLevel = 33).mode)
+    }
+
+    private fun backendWithLegacyFastCapture() = InMemoryCapturePreferenceBackend().apply {
+        putInt(AppConfig.KEY_CAPTURE_PERMISSION_SCHEMA, 1)
+        putString(AppConfig.KEY_CAPTURE_MODE, "FAST_ACCESSIBILITY")
+        putString("projection_result_data", "stale-token")
+        putString("projection_result_code", "-1")
+        putBoolean("capture_armed", true)
+    }
+
+    private fun assertMigrationCleanup(backend: InMemoryCapturePreferenceBackend) {
+        assertFalse(backend.contains("projection_result_data"))
+        assertFalse(backend.contains("projection_result_code"))
+        assertFalse(backend.contains("capture_armed"))
+        assertEquals(2, backend.getInt(AppConfig.KEY_CAPTURE_PERMISSION_SCHEMA, 0))
     }
 }
 
@@ -69,7 +103,7 @@ private class InMemoryCapturePreferenceBackend : CapturePreferenceBackend {
         values[key] = value
     }
 
-    override fun getBoolean(key: String, defaultValue: Boolean): Boolean =
+    override fun getBoolean(key: String, defaultValue: Boolean) =
         values[key] as? Boolean ?: defaultValue
 
     override fun putBoolean(key: String, value: Boolean) {

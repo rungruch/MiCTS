@@ -15,7 +15,6 @@ data class CompatibilityReport(
     val lensShareAvailable: Boolean,
     val selectedTriggerService: String,
     val captureMode: CaptureMode,
-    val fastCaptureApiAvailable: Boolean,
-    val fastCaptureEnabled: Boolean,
-    val fastCaptureConnected: Boolean,
+    val consentReuseSupported: Boolean,
+    val consentStored: Boolean,
 )

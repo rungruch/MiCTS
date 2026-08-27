@@ -30,7 +30,6 @@ Trigger Circle to Search on any Android 9–16 device
 
 MiCTS defaults to `Auto: native first`. The first launch tries real Circle to Search. On the next launch, MiCTS asks whether the native interface appeared:
 
-- Choose `Yes, keep native` to continue using real Circle to Search.
 - Choose `No, use Lens fallback` if Google disables Circle to Search. The first fallback trigger asks you to choose a capture method.
 
 Settings offers four trigger strategies:
@@ -46,15 +45,15 @@ The Lens path is a fallback, not native Circle to Search. At most one temporary 
 
 ### Capture permission and privacy
 
-| Android version | Fast capture | Ask every time |
+| Android version | Approve once (Remember consent) | Ask every time |
 | --- | --- | --- |
-| Android 9–10 (API 28–29) | Not available because Android has no Accessibility screenshot API | Required for each fallback trigger |
-| Android 11–12 (API 30–32) | Recommended; enable the screenshot-only MiCTS service once | Optional; new MediaProjection consent for every trigger |
-| Android 13+ (API 33+) | Recommended; direct installs may first need App info → More → Allow restricted settings | Optional; new MediaProjection consent for every trigger, including Android 14+ |
+| Android 9–13 (API 28–33) | Recommended; approve Android's screen-capture prompt once to capture silently without repeated dialogs | Optional; prompt for fresh MediaProjection consent before every trigger |
+| Android 14+ (API 34+) | Automatically degrades to Ask every time; tokens are single-use by platform design | Required for each fallback trigger |
 
-Fast capture uses Android's Accessibility screenshot API only after an explicit launcher or Quick Settings trigger. The MiCTS service does not retrieve window content, receive Accessibility events, perform gestures, use the Accessibility button, or display overlays. It remains enabled until you disable it in Android Accessibility settings. If it is disabled or disconnected, MiCTS shows recovery choices instead of unexpectedly opening a screen-capture dialog.
+Unlike accessibility-based capture tools, MiCTS uses **zero accessibility services**, ensuring complete compatibility with banking and security-conscious applications that restrict accessibility tools.
 
-`Ask every time` is the privacy-focused alternative. It creates one MediaProjection session, captures one frame, releases every projection resource, and discards the consent token. MiCTS never reuses a projection consent intent or token; Android 14 and later explicitly require fresh consent for each session.
+- **Approve once (Android 9–13)**: Prompts for Android's standard MediaProjection screen-capture permission once and securely remembers the consent token in private app storage. Each trigger starts a fresh, one-shot foreground service that captures a single frame and immediately stops and releases all resources—avoiding background battery drain and avoiding the need for an accessibility service or persistent "armed" service. If the platform invalidates the token (e.g. after a device reboot), MiCTS prompts again.
+- **Ask every time (Android 14+ and optional for older versions)**: Android 14 and newer enforce single-use tokens by platform design (`SecurityException` on reuse). On Android 14+, MiCTS explains this once and requests fresh consent for each capture.
    
 
 ## Settings
@@ -68,13 +67,10 @@ Fast capture uses Android's Accessibility screenshot API only after an explicit 
 - Default trigger delay: The delay when triggering by launching MiCTS
 - Tile trigger delay: The delay when triggering by the Quick Settings panel tile
 - Trigger strategy: Choose Auto, native Circle to Search only, the smart screen editor, or Google Lens directly
-- Capture method: On Android 11+, choose Fast capture or Ask every time and inspect whether the screenshot service is enabled and connected. Android 9–10 always asks every time.
+- Capture method: On Android 9–13, choose between "Approve once" (remembers consent to avoid repeated dialogs) and "Ask every time". On Android 14+, Android requires asking before every capture.
 - Reset Auto detection: Ask again whether the native trigger works
 - Recognize text locally: Enable the bundled offline Latin and Chinese models used by Copy, Search, and Translate
 - Compatibility report: Shows the Google app, assistant, Lens, Android framework, and selected trigger-service status without claiming access to Google's private device eligibility
-
-### Module Settings
-Need to activate the module in LSPosed
 - System trigger service: The system service used by triggering. Only the services supported will be shown. Need to add System Framework to the scope in LSPosed
    - VIS: Supports on Android 9-16. Need to set Google as the default assistant app and the screen edge will flash when triggering for some devices. If the module is not activated, only this service will be used
    - CSHelper: Supports on Android 14 QPR3 and above. Don’t need to set Google as the default assistant app and the screen edge will not flash when triggering
