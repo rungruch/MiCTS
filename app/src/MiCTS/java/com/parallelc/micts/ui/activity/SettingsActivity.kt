@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -75,12 +76,14 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LeanSettingsScreen(viewModel: SettingsViewModel) {
     val appConfig by viewModel.appConfig.collectAsState()
     var menuExpanded by remember { viewModel.menuExpanded }
     var languageExpanded by remember { viewModel.languageExpanded }
-    val capturePreferences = remember { CapturePreferenceStore(LocalContext.current) }
+    val context = LocalContext.current
+    val capturePreferences = remember(context) { CapturePreferenceStore(context) }
     var captureMode by remember { mutableStateOf(capturePreferences.mode) }
     var strategyMenuExpanded by remember { mutableStateOf(false) }
     var captureMenuExpanded by remember { mutableStateOf(false) }
