@@ -5,17 +5,22 @@ import java.io.File
 
 object CaptureFiles {
     private const val DIRECTORY_NAME = "lens_capture"
-    private const val CAPTURE_NAME = "capture.png"
 
     fun directory(context: Context): File = File(context.cacheDir, DIRECTORY_NAME)
 
-    fun capture(context: Context): File = File(directory(context), CAPTURE_NAME)
+    fun capture(context: Context): File = File(directory(context), CaptureEncoding.fileName)
 
     fun prepareForCapture(context: Context) {
         val directory = directory(context)
         if (!directory.exists()) directory.mkdirs()
-        capture(context).delete()
+        deleteCapture(context)
     }
 
-    fun deleteCapture(context: Context): Boolean = capture(context).delete()
+    fun deleteCapture(context: Context): Boolean {
+        val directory = directory(context)
+        val fileNames = CaptureEncoding.legacyFileNames + CaptureEncoding.fileName
+        return fileNames.fold(false) { deletedAny, fileName ->
+            File(directory, fileName).delete() || deletedAny
+        }
+    }
 }

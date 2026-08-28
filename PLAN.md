@@ -11,7 +11,7 @@
 
 - The app invokes the existing direct voice-interaction binder path for native Circle to Search.
 - Auto mode asks whether native Circle to Search appeared and remembers the answer.
-- Lens fallback uses one MediaProjection capture and shares the complete temporary PNG directly with the Google app.
+- Lens fallback uses one MediaProjection capture and shares the complete temporary JPEG directly with the Google app.
 - Android 14+ capture consent remains per-trigger; Android 9–13 may reuse remembered consent.
 
 ## Verification
@@ -25,10 +25,10 @@
 
 - Both debug flavors build with JDK 17 (Corretto 17); unit tests pass for both flavors.
 - MiCTS release APK builds (`assembleMiCTSRelease`), R8-minified, verified Xposed-free.
-- Release APK `MiCTS_1.0_9_MiCTSRelease.apk` installed on Samsung Galaxy Tab S5e (SGT-L29) via adb.
+- Release APK `MiCTS_1.0_9_MiCTSRelease.apk` installed on Huawei SGT-LX9 via adb.
 - Note: release APK is currently signed with the debug certificate fallback (no keystore configured).
 
-## Measured trigger-to-Lens latency (Tab S5e, 2026-08-28)
+## Measured trigger-to-Lens latency (Huawei SGT-LX9, 2026-08-28)
 
 Timeline captured from logcat on a real trigger:
 
@@ -46,16 +46,17 @@ Findings:
 - The pre-trigger delay slider (0–2000 ms) runs before the trigger and is skipped for the forced-Lens path; it does not apply here.
 - The dominant variable is the Google app process state: warm process draws Lens in ~150 ms; a cold process (OEM battery managers often kill it) adds seconds. That portion is app-side and not controllable from MiCTS.
 
-## Plan 1: Faster capture encoding (JPEG)
+## Plan 1: Faster capture encoding (JPEG) — implemented
 
-PNG at quality 100 for a full-resolution frame is the slowest MiCTS-side step and scales with screen size. Switch the fallback capture to JPEG.
+MiCTS now encodes the Lens-only fallback as JPEG at quality 90. VISTrigger keeps its lossless PNG editor/OCR input.
 
-- `app/src/main/java/com/parallelc/micts/capture/BitmapCaptureWriter.kt`: `Bitmap.CompressFormat.PNG` → `Bitmap.CompressFormat.JPEG`, quality ~90.
-- `app/src/main/java/com/parallelc/micts/data/LensShareGateway.kt`: share intent MIME `image/png` → `image/jpeg`.
-- `app/src/main/java/com/parallelc/micts/data/CaptureFiles.kt`: capture file extension `.png` → `.jpg` (and any cleanup paths referencing it).
-- Check `app/src/test/` for tests asserting the capture file name/MIME and update.
-- Expected result: capture stage drops from ~276 ms to roughly 60–100 ms; JPEG quality 90 is sufficient for Lens OCR and visual search.
-- Risk: low. If a `Bitmap.CompressFormat` nullability warning appears on some API levels, suppress explicitly (the API is null-safe in practice when passed a valid format).
+- A flavor flag selects one shared capture policy so the bitmap format, quality, cache filename, and share MIME remain consistent.
+- MiCTS writes `capture.jpg`, shares `image/jpeg`, and removes both the current JPEG and a legacy `capture.png` during cleanup.
+- VISTrigger continues to write `capture.png` and share `image/png`.
+- Flavor unit tests and focused encoding/cleanup instrumentation tests pass, including JPEG/PNG signature and decode checks.
+- Android ignores the quality argument for lossless PNG; the speedup comes from switching MiCTS to lossy JPEG, not from changing PNG quality.
+- Ten complete warm physical-device trials measured median stages of 173 ms trigger → MediaProjection start, 123 ms projection start → JPEG `ACTION_SEND`, 118 ms send → Lens displayed, and 413 ms total. The middle stage includes the prior ~23 ms trampoline/routing cost, putting capture/encoding near 100 ms.
+- Compared with the earlier ~650 ms end-to-end measurement, the new 413 ms median is about 36% faster and passes the 30% acceptance gate. Google Lens displayed its post-capture “Select text” UI, confirming JPEG acceptance and processing.
 
 ## Plan 2: Release signing
 
@@ -67,7 +68,8 @@ The `apksign` plugin falls back to the debug certificate when signing properties
 
 ## Plan 3: Instrumented tests
 
-Not yet run; require a connected device/emulator.
-
-- `./gradlew :app:connectedMiCTSDebugAndroidTest :app:connectedVISTriggerDebugAndroidTest`
-- Cover: native confirmation dialog, Lens fallback happy path, permission denial, protected-content capture, Lens-unavailable dialog, retake/cancel cleanup of the temporary capture file.
+- The MiCTS JPEG and VISTrigger PNG encoding tests pass on the Pixel Android 17 preview emulator.
+- The MiCTS JPEG encoding, decode, MIME, and legacy-cleanup tests also pass on the physical Huawei SGT-LX9 (Android 12/API 31), and the release build completes a real JPEG handoff to Google Lens.
+- The flavor-specific test directories were renamed to Gradle's `androidTest<Flavor>`/`test<Flavor>` convention so they are executed instead of silently producing zero-test reports.
+- The existing VISTrigger Compose UI tests are incompatible with the Android 17 preview Espresso runtime (`InputManager.getInstance` is unavailable); run the full suite on a supported Android 9–16 device/emulator.
+- Remaining coverage: native confirmation dialog, permission denial, protected-content capture, Lens-unavailable dialog, and retake/cancel UI behavior on a supported Android 9–16 test target.

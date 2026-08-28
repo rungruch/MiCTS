@@ -8,7 +8,7 @@
         <package android:name="com.google.android.googlequicksearchbox" />
         <intent>
             <action android:name="android.intent.action.SEND" />
-            <data android:mimeType="image/png" />
+            <data android:mimeType="image/jpeg" />
         </intent>
     </queries>
 

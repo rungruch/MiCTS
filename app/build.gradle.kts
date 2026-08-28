@@ -53,6 +53,7 @@ android {
             dimension = "app"
             applicationId = "com.parallelc.micts"
             buildConfigField("String", "APP_NAME", "\"MiCTS\"")
+            buildConfigField("boolean", "CAPTURE_AS_JPEG", "true")
         }
 
         create("VISTrigger") {
@@ -62,6 +63,7 @@ android {
             resValue("string", "tile_label", "VIS")
             resValue("string", "xposed_description", "Trigger Voice Interaction Service on any Android 9–16 device")
             buildConfigField("String", "APP_NAME", "\"VISTrigger\"")
+            buildConfigField("boolean", "CAPTURE_AS_JPEG", "false")
             proguardFiles("src/VISTrigger/proguard-rules.pro")
         }
     }

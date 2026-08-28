@@ -2,7 +2,9 @@ package com.parallelc.micts.capture
 
 import android.content.Context
 import android.graphics.Bitmap
+import com.parallelc.micts.data.CaptureEncoding
 import com.parallelc.micts.data.CaptureFiles
+import com.parallelc.micts.data.CaptureImageFormat
 import com.parallelc.micts.domain.CaptureFailureReason
 import com.parallelc.micts.domain.CaptureResult
 import java.io.FileOutputStream
@@ -18,7 +20,11 @@ object BitmapCaptureWriter {
             CaptureFiles.prepareForCapture(context)
             val probablyProtected = isProbablyProtected(bitmap)
             val written = FileOutputStream(CaptureFiles.capture(context)).use { stream ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                val format = when (CaptureEncoding.format) {
+                    CaptureImageFormat.JPEG -> Bitmap.CompressFormat.JPEG
+                    CaptureImageFormat.PNG -> Bitmap.CompressFormat.PNG
+                }
+                bitmap.compress(format, CaptureEncoding.quality, stream)
             }
             if (!written) error("Could not encode capture")
             CaptureResult.Success(probablyProtected)

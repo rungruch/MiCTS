@@ -19,7 +19,7 @@ Installing the lean `MiCTS` APK over an older MiCTS module replaces the old `com
 - Uses the existing direct voice-interaction binder path for native Circle to Search.
 - `Auto` tries native first, asks for confirmation, and remembers the result.
 - `Native only` never captures the screen.
-- `Lens fallback` uses one MediaProjection capture and sends the complete temporary PNG directly to Google Lens.
+- `Lens fallback` uses one MediaProjection capture and sends the complete temporary JPEG directly to Google Lens.
 - The fallback has no local OCR, crop editor, AI assistant, root trigger hooks, device spoofing, or Xposed metadata.
 - The direct hidden-API binder implementation and `hiddenapibypass` dependency are intentionally retained.
 

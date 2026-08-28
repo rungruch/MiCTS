@@ -36,8 +36,8 @@ class LensShareGateway(private val context: Context) {
         }
     }
 
-    private fun createShareIntent(uri: Uri): Intent = Intent(Intent.ACTION_SEND).apply {
-        type = "image/png"
+    internal fun createShareIntent(uri: Uri): Intent = Intent(Intent.ACTION_SEND).apply {
+        type = CaptureEncoding.mimeType
         setPackage(GOOGLE_APP_PACKAGE)
         putExtra(Intent.EXTRA_STREAM, uri)
         if (uri != Uri.EMPTY) {

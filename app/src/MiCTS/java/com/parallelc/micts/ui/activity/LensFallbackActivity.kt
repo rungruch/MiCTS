@@ -38,7 +38,7 @@ import com.parallelc.micts.ui.theme.MiCTSTheme
  *
  * The activity exists as a foreground trampoline because Android does not
  * allow the capture service to launch another app directly. It never decodes
- * or edits the captured image: the complete temporary PNG is handed to Lens.
+ * or edits the captured image: the complete temporary JPEG is handed to Lens.
  */
 class LensFallbackActivity : ComponentActivity() {
     companion object {
