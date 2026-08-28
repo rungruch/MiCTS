@@ -3,7 +3,6 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
-    <uses-permission android:name="android.permission.INTERNET" />
 
     <queries>
         <package android:name="com.google.android.googlequicksearchbox" />
@@ -11,27 +10,11 @@
             <action android:name="android.intent.action.SEND" />
             <data android:mimeType="image/png" />
         </intent>
-        <intent>
-            <action android:name="android.intent.action.WEB_SEARCH" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.TRANSLATE" />
-            <data android:mimeType="text/plain" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <category android:name="android.intent.category.BROWSABLE" />
-            <data android:scheme="https" />
-        </intent>
-        <intent>
-            <action android:name="android.app.contextualsearch.action.LAUNCH_CONTEXTUAL_SEARCH" />
-        </intent>
     </queries>
 
-    <application
-        android:usesCleartextTraffic="true">
+    <application>
         <activity
-            android:name=".ui.activity.CropActivity"
+            android:name=".ui.activity.LensFallbackActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:theme="@style/Theme.MiCTS" />

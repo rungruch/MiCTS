@@ -62,6 +62,7 @@ android {
             resValue("string", "tile_label", "VIS")
             resValue("string", "xposed_description", "Trigger Voice Interaction Service on any Android 9–16 device")
             buildConfigField("String", "APP_NAME", "\"VISTrigger\"")
+            proguardFiles("src/VISTrigger/proguard-rules.pro")
         }
     }
 
@@ -103,13 +104,9 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.accompanist.drawablepainter)
-    compileOnly(libs.libxposed.api)
-    implementation(libs.libxposed.service)
     implementation(libs.hiddenapibypass)
-    add("MiCTSImplementation", libs.mlkit.text.recognition)
-    add("MiCTSImplementation", libs.mlkit.text.recognition.chinese)
-    add("MiCTSImplementation", libs.okhttp)
-    add("MiCTSImplementation", libs.androidx.security.crypto)
+    add("VISTriggerCompileOnly", libs.libxposed.api)
+    add("VISTriggerImplementation", libs.libxposed.service)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.core.ktx)

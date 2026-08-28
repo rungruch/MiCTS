@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trigger_strategy_lens">Smart screen editor (local OCR)</string>
+    <string name="lens_fallback_notice">The fallback captures one frame with Android permission, then opens a local text-and-image selection editor. It is not native Circle to Search.</string>
+    <string name="capture_notification_text">Capturing one frame for cropping</string>
+    <string name="lens_unavailable_message">The installed Google app cannot receive this cropped image. Install or update the Google app and try again.</string>
+</resources>

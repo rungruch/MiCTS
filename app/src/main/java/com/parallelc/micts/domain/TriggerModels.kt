@@ -4,6 +4,7 @@ enum class TriggerStrategy {
     AUTO,
     NATIVE_ONLY,
     LENS_FALLBACK,
+    @Deprecated("Kept only to migrate settings from older releases")
     DIRECT_LENS,
 }
 

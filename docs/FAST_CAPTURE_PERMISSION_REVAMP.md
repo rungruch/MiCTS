@@ -1,6 +1,6 @@
 # MiCTS Screen Capture Architecture & Consent Revamp
 
-This document records the screen capture architecture refactor completed on 2026-08-27, replacing the experimental Accessibility Service approach with a clean, no-root MediaProjection consent model.
+This document records the screen capture architecture refactor completed on 2026-08-27, replacing the experimental Accessibility Service approach with a clean, no-root MediaProjection consent model. The standalone `MiCTS` build uses this capture only for its full-screen Google Lens fallback; the separate `VISTrigger` build remains the legacy LSPosed module.
 
 ## Rationale: Removal of Accessibility Service
 
@@ -45,7 +45,7 @@ Android 14 explicitly throws a `SecurityException` if a MediaProjection token is
 
 ## Verification & Compatibility
 
-- **Zero Accessibility Footprint**: Verified that neither `MiCTS` nor `VISTrigger` manifests or source sets contain accessibility services, permissions (`BIND_ACCESSIBILITY_SERVICE`), or resource descriptors.
+- **Zero Accessibility Footprint**: Verified that neither `MiCTS` nor `VISTrigger` manifests or source sets contain accessibility services, permissions (`BIND_ACCESSIBILITY_SERVICE`), or resource descriptors. Only `VISTrigger` contains LSPosed/Xposed metadata and hooks.
 - **Unit & Instrumented Tests**:
   - `CapturePreferenceStoreTest`: Validates initial defaults, schema migration (mapping legacy modes on API 33 vs API 34), and cleanup of deprecated keys.
   - `CapturePermissionCoordinatorTest`: Validates permission actions for API 28–36, stored token handling, and single-use enforcement on Android 14+.

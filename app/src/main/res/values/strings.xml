@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="app_name" translatable="false">MiCTS</string>
+    <string name="app_description">Trigger Circle to Search without root</string>
     <string name="tile_label">Circle to Search</string>
-    <string name="xposed_description">Trigger Circle to Search on any Android 9–16 device</string>
     <string name="title_activity_settings">Settings</string>
     <string name="trigger_failed">Trigger failed!</string>
+    <string name="change">Change</string>
     <string name="app_settings">App Settings</string>
     <string name="default_trigger_delay">Default trigger delay</string>
     <string name="tile_trigger_delay">Tile trigger delay</string>
@@ -19,10 +20,10 @@
     <string name="trigger_strategy">Trigger strategy</string>
     <string name="trigger_strategy_auto">Auto: native first</string>
     <string name="trigger_strategy_native">Native Circle to Search only</string>
-    <string name="trigger_strategy_lens">Smart screen editor (local OCR)</string>
+    <string name="trigger_strategy_lens">Google Lens fallback</string>
     <string name="trigger_strategy_direct_lens">Google Lens directly</string>
     <string name="reset_auto_detection">Reset Auto detection</string>
-    <string name="lens_fallback_notice">The fallback captures one frame with Android permission, then opens a local text-and-image selection editor. It is not native Circle to Search.</string>
+    <string name="lens_fallback_notice">The fallback captures one frame with Android permission, then sends the full frame to Google Lens. It is not native Circle to Search.</string>
     <string name="compatibility_report">Compatibility report</string>
     <string name="compatibility_device">Device</string>
     <string name="compatibility_android">Android</string>
@@ -60,7 +61,8 @@
     <string name="cancel">Cancel</string>
     <string name="capture_notification_channel">Screen capture</string>
     <string name="capture_notification_title">Preparing Lens fallback</string>
-    <string name="capture_notification_text">Capturing one frame for cropping</string>
+    <string name="capture_notification_text">Capturing one frame for Google Lens</string>
+    <string name="opening_lens">Opening Google Lens…</string>
     <string name="crop_title">Crop for Google Lens</string>
     <string name="smart_search_title">Smart screen search</string>
     <string name="crop_editor_description">Captured screen with recognized text, a movable selection, and pinch-to-zoom controls</string>
@@ -123,7 +125,7 @@
     <string name="capture_consent_expired">The remembered screen-capture approval expired. Retake and approve Android’s request once more.</string>
     <string name="capture_unknown_error">An unknown screen-capture error occurred.</string>
     <string name="lens_unavailable_title">Google Lens is unavailable</string>
-    <string name="lens_unavailable_message">The installed Google app cannot receive this cropped image. Install or update the Google app and try again.</string>
+    <string name="lens_unavailable_message">The installed Google app cannot receive the full-screen capture. Install or update the Google app and try again.</string>
     <string name="open_google_app_store">Open Google app page</string>
     <string name="module_settings">Module Settings</string>
     <string name="access_xposed_service_failed">Access xposed service failed</string>

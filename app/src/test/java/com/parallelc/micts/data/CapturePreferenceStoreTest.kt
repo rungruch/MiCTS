@@ -52,7 +52,6 @@ class CapturePreferenceStoreTest {
         val backend = InMemoryCapturePreferenceBackend().apply {
             putString(AppConfig.KEY_CAPTURE_MODE, CaptureMode.ASK_EVERY_TIME.name)
             putString(AppConfig.KEY_TRIGGER_STRATEGY, "NATIVE_ONLY")
-            putBoolean(AppConfig.KEY_LOCAL_TEXT_RECOGNITION, false)
         }
 
         val store = CapturePreferenceStore(backend, apiLevel = 31)
@@ -62,7 +61,6 @@ class CapturePreferenceStoreTest {
             "NATIVE_ONLY",
             backend.getString(AppConfig.KEY_TRIGGER_STRATEGY, "AUTO"),
         )
-        assertFalse(backend.getBoolean(AppConfig.KEY_LOCAL_TEXT_RECOGNITION, true))
     }
 
     @Test

@@ -4,7 +4,7 @@
 
 [简体中文](/README.md)&nbsp;&nbsp;|&nbsp;&nbsp;English&nbsp;&nbsp;|&nbsp;&nbsp;[Русский](/README_ru.md)&nbsp;&nbsp;|&nbsp;&nbsp;[Türkçe](/README_tr.md)&nbsp;&nbsp;|&nbsp;&nbsp;[فارسی](/README_fa.md)
 
-Trigger Circle to Search on any Android 9–16 device
+Trigger Circle to Search without root on Android 9–16
 
 *This app only aims to trigger Circle to Search and cannot handle issues that may occur after triggering successfully*
 
@@ -14,34 +14,32 @@ Trigger Circle to Search on any Android 9–16 device
 
 
 2. Install and launch MiCTS
-   - If you're lucky, Circle to Search will be triggered directly without root when launching MiCTS
-   - If nothing happened, most likely it's because Google disabled Circle to Search for your device (you can confirm by checking the message `Omni invocation failed: not enabled` in Logcat). Try the following **with root**:
-     - Activate the module in LSPosed, enable `Device spoof for Google` in the [MiCTS settings](#how-to-enter-settings), and force restart Google
-     - If it still doesn't work, then change `com.google.android.apps.search.omnient.device` flag `45631784` to true using [GMS-Flags](https://github.com/polodarb/GMS-Flags)
+   - MiCTS invokes the native Circle to Search interface directly.
+   - If Google rejects the native request, MiCTS can use the Google Lens fallback described below. Native eligibility is controlled by Google and cannot be changed by MiCTS.
 
 
 3. Set up the trigger method
-   - Launching MiCTS will trigger, so you can use other apps like Quick Ball, Xposed Edge, ShortX, etc., set launching MiCTS as the action to customize the trigger method
+   - Launching MiCTS will trigger, so you can use other automation tools like Quick Ball or ShortX and set launching MiCTS as the action to customize the trigger method
    - MiCTS provides a trigger tile, so you can add it to the Quick Settings panel and trigger by clicking it
-   - For Xiaomi devices, MiCTS has built-in support for `Trigger by long press gesture handle` and `Trigger by long press home button`, which can be enabled in the MiCTS settings (need to activate the module and restart the phone after installing MiCTS)
    - For Samsung devices running Android 13 and above, you can download and install "Routines+" from the [Galaxy Store](https://galaxystore.samsung.com/detail/com.samsung.android.app.routineplus) or [Good Lock](https://galaxystore.samsung.com/detail/com.samsung.android.goodlock). Then, go to Settings > Modes and Routines to create routines that launch MiCTS by Button action such as long-pressing the power button.
+
+The repository also produces a separate `VISTrigger` APK for users who still need the legacy LSPosed module. It is not required by the standalone MiCTS APK.
+
+The standalone build keeps the `com.parallelc.micts` package name. Installing it over an older MiCTS module replaces that old module build; install `VISTrigger` separately if you still need the legacy hooks.
 
 ### Google Lens fallback
 
 MiCTS defaults to `Auto: native first`. The first launch tries real Circle to Search. On the next launch, MiCTS asks whether the native interface appeared:
 
-- Choose `No, use Lens fallback` if Google disables Circle to Search. The first fallback trigger asks you to choose a capture method.
+- Choose `No, use Lens fallback` if Google disables Circle to Search. MiCTS requests Android screen-capture permission, captures one full frame, and sends it directly to Google Lens.
 
-Settings offers four trigger strategies:
+Settings offers three trigger strategies:
 
 - **Auto: native first** - try real Circle to Search, remember what works, fall back automatically if the system rejects it.
 - **Native Circle to Search only** - never use a fallback.
-- **Smart screen editor (local OCR)** - after capturing one frame, open MiCTS's private editor with bundled offline Latin/Chinese text recognition, selection, Copy/Search/Translate, and a Lens handoff for the selected region or full screen.
-- **Google Lens directly** - share the full captured frame straight into the Google app's Lens screen without opening the local editor. Refine the region inside Lens itself.
+- **Google Lens fallback** - capture one full frame and send it directly to the Google app's Lens screen.
 
-The fallback recognizes Latin and Chinese text locally with models bundled in MiCTS. You can tap detected text or draw a rectangle, pinch to zoom, then Copy, Search, Translate, or send the selected region to Google Lens. Full-screen Lens is available from the editor's overflow menu. Text recognition can be disabled in Settings without disabling Lens.
-
-The Lens path is a fallback, not native Circle to Search. At most one temporary capture is kept in the app cache, and MiCTS performs no network upload for capture or local OCR. An optional "Ask AI" assistant is available (off by default); when explicitly configured and triggered, only the selected region and recognized text are sent to your configured OpenAI-compatible endpoint. Search, Translate, and Lens receive content only after you explicitly tap their action, and those external apps or websites apply their own privacy policies.
+The Lens path is a fallback, not native Circle to Search. At most one temporary capture is kept in the app cache. MiCTS does not upload the capture itself; Google Lens receives the image only after the explicit fallback action and applies its own privacy policy.
 
 ### Capture permission and privacy
 
@@ -60,34 +58,14 @@ Unlike accessibility-based capture tools, MiCTS uses **zero accessibility servic
 
 ### How to enter Settings
 - Long press the MiCTS app icon to show the Settings option, then click to enter
-- From the Modules page in LSPosed, click MiCTS, then click the settings icon to enter
 - Long press the Quick Settings panel tile to enter
 
 ### App Settings
 - Default trigger delay: The delay when triggering by launching MiCTS
 - Tile trigger delay: The delay when triggering by the Quick Settings panel tile
-- Trigger strategy: Choose Auto, native Circle to Search only, the smart screen editor, or Google Lens directly
+- Trigger strategy: Choose Auto, native Circle to Search only, or Google Lens fallback
 - Capture method: On Android 9–13, choose between "Approve once" (remembers consent to avoid repeated dialogs) and "Ask every time". On Android 14+, Android requires asking before every capture.
 - Reset Auto detection: Ask again whether the native trigger works
-- Recognize text locally: Enable the bundled offline Latin and Chinese models used by Copy, Search, and Translate
-- Compatibility report: Shows the Google app, assistant, Lens, Android framework, and selected trigger-service status without claiming access to Google's private device eligibility
-- System trigger service: The system service used by triggering. Only the services supported will be shown. Need to add System Framework to the scope in LSPosed
-   - VIS: Supports on Android 9-16. Need to set Google as the default assistant app and the screen edge will flash when triggering for some devices. If the module is not activated, only this service will be used
-   - CSHelper: Supports on Android 14 QPR3 and above. Don’t need to set Google as the default assistant app and the screen edge will not flash when triggering
-   - CSService: Supports on Android 15 and above. A dedicated service for Circle to Search, same effect as CSHelper
-
-
-- Trigger by long press gesture handle: Only supports on Xiaomi devices. Need to add System Launcher/POCO Launcher to the scope in LSPosed
-
-
-- Trigger by long press home button: Only supports on Xiaomi devices. Need to add System Framework to the scope in LSPosed
-
-
-- Device spoof for Google: Need to add Google to the scope in LSPosed
-   - Manufacturer: Modify the `ro.product.manufacturer` value that Google reads
-   - Brand: Modify the `ro.product.brand` value that Google reads
-   - Model: Modify the `ro.product.model` value that Google reads
-   - Device: Modify the `ro.product.device` value that Google reads
 
 ## FAQ
 
@@ -101,13 +79,13 @@ Ensure that Google is the latest version
 
 ### Gemini or Android Auto works, but Circle to Search does not
 
-These features use different Google services and eligibility checks. If Logcat contains `Omni invocation failed: not enabled`, Google received the native request but disabled Circle to Search for the device. Without root, use MiCTS's Google Lens fallback.
+These features use different Google services and eligibility checks. If Logcat contains `Omni invocation failed: not enabled`, Google received the native request but disabled Circle to Search for the device. Use MiCTS's Google Lens fallback.
 
 ### Sometimes it doesn't trigger successfully, and the interface appears only after opening Google
 
 This is likely due to the tombstone mechanism. Check if your device has related settings and add Google to the whitelist, such as selecting "No restrictions" in battery saver
 
-This issue should not occur when the `System trigger service` is set to `CSHelper` in the Module Settings
+If the native interface is unreliable, select Google Lens fallback in MiCTS settings.
 
 ## Translation Contributing
 

@@ -30,7 +30,7 @@ import com.parallelc.micts.data.TriggerPreferenceStore
 import com.parallelc.micts.domain.CaptureFailureReason
 import com.parallelc.micts.domain.CaptureResult
 import com.parallelc.micts.domain.TriggerStrategy
-import com.parallelc.micts.ui.activity.CropActivity
+import com.parallelc.micts.ui.activity.FallbackActivity
 import com.parallelc.micts.ui.activity.MainActivity
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -215,27 +215,27 @@ class ScreenCaptureService : Service() {
     private fun completeFailure(reason: CaptureFailureReason) {
         if (!completed.compareAndSet(false, true)) return
         workerHandler.removeCallbacksAndMessages(null)
-        launchCropActivity(false, reason)
+        launchFallbackActivity(false, reason)
         releaseResources()
         stopSelf()
     }
 
     private fun routeCapture(probablyProtected: Boolean) {
         // "Google Lens directly" hands the full frame to Lens from within
-        // CropActivity (a foreground Activity) because starting Lens from this
+        // fallback Activity (a foreground Activity) because starting Lens from this
         // background Service trips Android's background-activity-start limit.
         val directLens = runCatching {
             TriggerPreferenceStore(this).strategy == TriggerStrategy.DIRECT_LENS && !probablyProtected
         }.getOrDefault(false)
-        launchCropActivity(probablyProtected, null, autoLens = directLens)
+        launchFallbackActivity(probablyProtected, null, autoLens = directLens)
     }
 
-    private fun launchCropActivity(
+    private fun launchFallbackActivity(
         probablyProtected: Boolean,
         failureReason: CaptureFailureReason?,
         autoLens: Boolean = false,
     ) {
-        val intent = CropActivity.createIntent(this, probablyProtected, failureReason, autoLens).apply {
+        val intent = FallbackActivity.createIntent(this, probablyProtected, failureReason, autoLens).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
         startActivity(intent)
