@@ -45,12 +45,12 @@ The Lens path is a fallback, not native Circle to Search. At most one temporary 
 
 | Android version | Approve once (Remember consent) | Ask every time |
 | --- | --- | --- |
-| Android 9–13 (API 28–33) | Recommended; approve Android's screen-capture prompt once to capture silently without repeated dialogs | Optional; prompt for fresh MediaProjection consent before every trigger |
+| Android 9–13 (API 28–33) | Recommended; approve Android's screen-capture prompt once per app process to capture silently without repeated dialogs | Optional; prompt for fresh MediaProjection consent before every trigger |
 | Android 14+ (API 34+) | Automatically degrades to Ask every time; tokens are single-use by platform design | Required for each fallback trigger |
 
 Unlike accessibility-based capture tools, MiCTS uses **zero accessibility services**, ensuring complete compatibility with banking and security-conscious applications that restrict accessibility tools.
 
-- **Approve once (Android 9–13)**: Prompts for Android's standard MediaProjection screen-capture permission once and securely remembers the consent token in private app storage. Each trigger starts a fresh, one-shot foreground service that captures a single frame and immediately stops and releases all resources—avoiding background battery drain and avoiding the need for an accessibility service or persistent "armed" service. If the platform invalidates the token (e.g. after a device reboot), MiCTS prompts again.
+- **Approve once (Android 9–13)**: Prompts for Android's standard MediaProjection screen-capture permission once and keeps the consent token only while the app process is alive. Each trigger starts a fresh, one-shot foreground service that captures a single frame and immediately stops and releases all resources—avoiding background battery drain and avoiding the need for an accessibility service or persistent "armed" service. After process death, a reboot, or platform token invalidation, MiCTS prompts again.
 - **Ask every time (Android 14+ and optional for older versions)**: Android 14 and newer enforce single-use tokens by platform design (`SecurityException` on reuse). On Android 14+, MiCTS explains this once and requests fresh consent for each capture.
    
 
@@ -64,7 +64,7 @@ Unlike accessibility-based capture tools, MiCTS uses **zero accessibility servic
 - Default trigger delay: The delay when triggering by launching MiCTS
 - Tile trigger delay: The delay when triggering by the Quick Settings panel tile
 - Trigger strategy: Choose Auto, native Circle to Search only, or Google Lens fallback
-- Capture method: On Android 9–13, choose between "Approve once" (remembers consent to avoid repeated dialogs) and "Ask every time". On Android 14+, Android requires asking before every capture.
+- Capture method: On Android 9–13, choose between "Approve once" (reuses consent while MiCTS remains running) and "Ask every time". On Android 14+, Android requires asking before every capture.
 - Reset Auto detection: Ask again whether the native trigger works
 
 ## FAQ

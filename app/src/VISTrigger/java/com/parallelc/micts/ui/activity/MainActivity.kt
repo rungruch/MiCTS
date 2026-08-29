@@ -84,7 +84,6 @@ class MainActivity : ComponentActivity() {
     private val nativeGateway = AndroidNativeTriggerGateway()
     private lateinit var triggerPreferences: TriggerPreferenceStore
     private lateinit var capturePreferences: CapturePreferenceStore
-    private lateinit var projectionConsent: ProjectionConsentStore
     private var captureRequestInFlight = false
     private var captureServiceStarted = false
 
@@ -103,7 +102,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
             capturePreferences.mode == CaptureMode.REMEMBER_CONSENT
         ) {
-            projectionConsent.save(result.resultCode, resultData)
+            ProjectionConsentStore.save(result.resultCode, resultData)
         }
         startCaptureService(
             ScreenCaptureService.createIntent(
@@ -122,7 +121,6 @@ class MainActivity : ComponentActivity() {
         }
         triggerPreferences = TriggerPreferenceStore(this)
         capturePreferences = CapturePreferenceStore(this)
-        projectionConsent = ProjectionConsentStore(this)
         captureRequestInFlight = savedInstanceState?.getBoolean(
             STATE_CAPTURE_REQUEST_IN_FLIGHT,
             false,
@@ -253,7 +251,7 @@ class MainActivity : ComponentActivity() {
             capturePermissionCoordinator.nextAction(
                 apiLevel = Build.VERSION.SDK_INT,
                 mode = capturePreferences.mode,
-                consentStored = projectionConsent.load() != null,
+                consentStored = ProjectionConsentStore.load() != null,
                 explanationSeen = capturePreferences.consentExplanationSeen,
             )
         ) {
@@ -311,7 +309,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun captureWithStoredConsent() {
-        val consent = projectionConsent.load()
+        val consent = ProjectionConsentStore.load()
         if (consent == null) {
             requestMediaProjection()
             return

@@ -1,11 +1,11 @@
 # MiCTS Lean Build Handover
 
-Date: 2026-08-28
+Date: 2026-08-29
 Branch: `lean`
 
 ## Status
 
-The lean implementation is complete. APK assembly is not verified because this host has no Java/JDK runtime; Gradle exits before project configuration with `Unable to locate a Java Runtime`.
+The lean implementation and Android 17/API 37 toolchain upgrade are complete locally. Both flavors assemble with JDK 17; CI now verifies tests, lint, APK isolation, signed release artifacts, and manual emulator runs.
 
 ## Build matrix
 
@@ -26,24 +26,24 @@ Installing the lean `MiCTS` APK over an older MiCTS module replaces the old `com
 ## Source layout
 
 - Lean app code is under `app/src/MiCTS/`.
-- Legacy module code, Xposed metadata, AI/OCR editor interfaces, and legacy tests are under `app/src/VISTrigger/`, `app/src/VISTriggerTest/`, and `app/src/VISTriggerAndroidTest/`.
+- Legacy module code, Xposed metadata, and AI/OCR editor interfaces are under `app/src/VISTrigger/`; its tests are under `app/src/testVISTrigger/` and `app/src/androidTestVISTrigger/`.
+- MiCTS flavor tests are under `app/src/testMiCTS/` and `app/src/androidTestMiCTS/`.
 - Shared capture and preference code remains under `app/src/main/`.
 - `AppConfig` is flavor-specific so legacy AI/OCR settings are not compiled into MiCTS.
 
 ## Verification completed
 
-- All XML files pass `xmllint --noout`.
 - `git diff --check` passes.
-- Static checks confirm MiCTS has no Xposed/libxposed, ML Kit, OCR gateway, AI gateway, accessibility component, internet permission, or Xposed metadata references.
-- The attempted build command was:
+- `:app:testMiCTSDebugUnitTest` and `:app:testVISTriggerDebugUnitTest` pass (25 and 50 tests respectively).
+- Both flavor lint tasks report no new issues, and both debug and minified release APKs assemble successfully.
+- APK inspection confirms MiCTS contains no Xposed metadata/classes or VISTrigger editor code, while VISTrigger retains its Xposed entry metadata.
+- Standard AGP release signing has been verified with `apksigner`; local unsigned releases are intentional when signing properties are absent.
 
 ```text
-./gradlew :app:assembleMiCTSDebug :app:assembleVISTriggerDebug
+./gradlew :app:testMiCTSDebugUnitTest :app:testVISTriggerDebugUnitTest :app:lintMiCTSDebug :app:lintVISTriggerDebug :app:assembleMiCTSDebug :app:assembleVISTriggerDebug --no-parallel
 ```
 
 ## Next steps
 
-1. Install/configure JDK 17.
-2. Run the build command above.
-3. Run the relevant unit and instrumented tests for both flavors.
-4. Inspect both APKs to confirm only VISTrigger contains Xposed metadata and hook classes.
+1. Run the manual emulator workflow for API 28, 33, 34, and 37.
+2. Complete the real-device Android 17 and libxposed 101/102 framework checks before documenting Android 17 support.

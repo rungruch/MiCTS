@@ -1,7 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<!-- VISTrigger is the only flavor with these editor/module overrides. The
+     application deliberately falls back to their English text until localized
+     feature strings are supplied; MiCTS shared resources are unaffected. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="trigger_strategy_lens">Smart screen editor (local OCR)</string>
     <string name="lens_fallback_notice">The fallback captures one frame with Android permission, then opens a local text-and-image selection editor. It is not native Circle to Search.</string>
+    <string name="compatibility_report">Compatibility report</string>
+    <string name="compatibility_device">Device</string>
+    <string name="compatibility_android">Android</string>
+    <string name="compatibility_google_app">Google app</string>
+    <string name="compatibility_active_assistant">Active assistant</string>
+    <string name="compatibility_google_assistant">Google is default assistant</string>
+    <string name="compatibility_cts_activity">CTS activity resolves</string>
+    <string name="compatibility_cts_feature">CTS system feature</string>
+    <string name="compatibility_cts_service">CTS system service</string>
+    <string name="compatibility_lens_share">Google Lens image share</string>
+    <string name="compatibility_trigger_service">Selected trigger service</string>
+    <string name="compatibility_capture_method">Capture method</string>
+    <string name="compatibility_consent_reuse">Single approval supported by Android</string>
+    <string name="compatibility_consent_stored">Screen-capture approval remembered</string>
+    <string name="compatibility_entitlement_unknown">Google controls native CTS eligibility privately; MiCTS cannot confirm or change it without root.</string>
+    <string name="status_yes">Yes</string>
+    <string name="status_no">No</string>
+    <string name="status_not_installed">Not installed</string>
+    <string name="status_none">None</string>
     <string name="capture_notification_text">Capturing one frame for cropping</string>
+    <string name="crop_editor_description">Captured screen with recognized text, a movable selection, and pinch-to-zoom controls</string>
+    <string name="lens">Lens</string>
+    <string name="search_full_screen_lens">Search full screen with Lens</string>
+    <string name="close">Close</string>
+    <string name="more_actions">More actions</string>
+    <string name="select_text_or_image_hint">Tap recognized text or draw a box around an image.</string>
+    <string name="finding_text">Finding text locally…</string>
+    <string name="no_text_found">No text found — tap to retry</string>
+    <string name="text_recognition_retry">Text recognition failed — tap to retry</string>
+    <string name="local_text_recognition">Recognize text locally</string>
+    <string name="local_text_recognition_summary">Use bundled Latin and Chinese models for Copy, Search, and Translate. Screenshots and recognized text stay on this device until you choose an external action.</string>
+    <string name="ai_assistant">AI assistant</string>
+    <string name="ai_assistant_summary">Ask AI about captured screenshots using your own API endpoint</string>
+    <string name="ai_enabled">Enable AI assistant</string>
+    <string name="ai_base_url">API base URL</string>
+    <string name="ai_api_key">API key</string>
+    <string name="ai_model">Model name</string>
+    <string name="ai_send_image">Send screenshot to AI</string>
+    <string name="ai_send_image_summary">Include the selected region as an image. Disable for text-only models.</string>
+    <string name="ai_test_connection">Test connection</string>
+    <plurals name="ai_test_success">
+        <item quantity="one">Connected — %d model available</item>
+        <item quantity="other">Connected — %d models available</item>
+    </plurals>
+    <string name="ai_test_failed">Connection failed: %s</string>
+    <string name="ai_privacy_title">Privacy notice</string>
+    <string name="ai_privacy_message">When you use Ask AI, the selected screenshot region and recognized text are sent to your configured third-party AI endpoint. MiCTS does not control how that endpoint processes the data.</string>
+    <string name="ai_privacy_accept">I understand</string>
+    <string name="ask_ai">Ask AI</string>
+    <string name="ai_summarize_prompt">Summarize this screenshot</string>
+    <string name="ai_chat_title">AI Chat</string>
+    <string name="ai_chat_placeholder">Ask a follow-up question…</string>
+    <string name="ai_send">Send</string>
+    <string name="ai_copy_message">Copy message</string>
+    <string name="ai_retry">Retry</string>
+    <string name="copy_text">Copy</string>
+    <string name="search_text">Search</string>
+    <string name="translate_text">Translate</string>
+    <string name="text_copied">Selected text copied</string>
+    <string name="translate_in_browser_title">Translate in browser?</string>
+    <string name="search_in_browser_title">Search in browser?</string>
+    <string name="browser_handoff_message">No compatible app accepted this action. Opening the browser will send only your selected text to the website.</string>
+    <string name="open_browser">Open browser</string>
+    <string name="external_action_unavailable_title">No compatible app found</string>
+    <string name="translate_unavailable_message">MiCTS could not find an app or browser that can translate the selected text.</string>
+    <string name="search_unavailable_message">MiCTS could not find an app or browser that can search for the selected text.</string>
     <string name="lens_unavailable_message">The installed Google app cannot receive this cropped image. Install or update the Google app and try again.</string>
+    <string name="module_settings">Module Settings</string>
+    <string name="access_xposed_service_failed">Access xposed service failed</string>
+    <string name="system_trigger_service">System trigger service</string>
+    <string name="trigger_by_long_press_home_button">Trigger by long press home button</string>
+    <string name="trigger_by_long_press_gesture_handle">Trigger by long press gesture handle</string>
+    <string name="device_spoof_for_google">Device spoof for Google</string>
+    <string name="manufacturer">Manufacturer</string>
+    <string name="brand">Brand</string>
+    <string name="model">Model</string>
+    <string name="device">Device</string>
+    <string name="about">About</string>
 </resources>

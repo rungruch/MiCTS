@@ -9,6 +9,7 @@ import com.parallelc.micts.ui.activity.MainActivity
 
 class LaunchTileService : TileService() {
     @SuppressLint("StartActivityAndCollapseDeprecated")
+    @Suppress("DEPRECATION")
     override fun onClick() {
         super.onClick()
 

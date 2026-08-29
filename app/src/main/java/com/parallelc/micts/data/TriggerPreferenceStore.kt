@@ -32,10 +32,17 @@ class TriggerPreferenceStore internal constructor(
     )
 
     var strategy: TriggerStrategy
-        get() = getEnum(
-            AppConfig.KEY_TRIGGER_STRATEGY,
-            TriggerStrategy.AUTO,
-        )
+        get() {
+            val stored = backend.getString(
+                AppConfig.KEY_TRIGGER_STRATEGY,
+                TriggerStrategy.AUTO.name,
+            )
+            val strategy = TriggerStrategy.fromStoredName(stored)
+            if (strategy.name != stored) {
+                backend.putString(AppConfig.KEY_TRIGGER_STRATEGY, strategy.name)
+            }
+            return strategy
+        }
         set(value) {
             backend.putString(AppConfig.KEY_TRIGGER_STRATEGY, value.name)
         }

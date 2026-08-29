@@ -4,7 +4,9 @@
     <application
         android:description="@string/xposed_description"
         tools:replace="android:description">
-        <activity android:name=".ui.activity.SettingsActivity">
+        <activity
+            android:name=".ui.activity.SettingsActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="de.robv.android.xposed.category.MODULE_SETTINGS" />

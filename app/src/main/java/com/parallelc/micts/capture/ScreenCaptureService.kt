@@ -26,10 +26,8 @@ import android.view.WindowManager
 import com.parallelc.micts.R
 import com.parallelc.micts.data.CaptureFiles
 import com.parallelc.micts.data.ProjectionConsentStore
-import com.parallelc.micts.data.TriggerPreferenceStore
 import com.parallelc.micts.domain.CaptureFailureReason
 import com.parallelc.micts.domain.CaptureResult
-import com.parallelc.micts.domain.TriggerStrategy
 import com.parallelc.micts.ui.activity.FallbackActivity
 import com.parallelc.micts.ui.activity.MainActivity
 import java.util.concurrent.atomic.AtomicBoolean
@@ -68,9 +66,9 @@ class ScreenCaptureService : Service() {
         override fun onStop() {
             if (completed.get()) return
             if (fromStoredConsent) {
-                // A stored consent token that stops right away is dead:
+                // An in-memory consent token that stops right away is dead:
                 // drop it so the next trigger asks for approval once more.
-                ProjectionConsentStore(this@ScreenCaptureService).clear()
+                ProjectionConsentStore.clear()
                 completeFailure(CaptureFailureReason.CONSENT_EXPIRED)
             } else {
                 completeFailure(CaptureFailureReason.PROJECTION_STOPPED)
@@ -162,9 +160,9 @@ class ScreenCaptureService : Service() {
 
     private fun onConsentRejected() {
         if (fromStoredConsent) {
-            // Android invalidated the remembered approval (reboot, OEM
-            // policy): clear it so the next trigger asks exactly once more.
-            ProjectionConsentStore(this).clear()
+            // Android invalidated the in-memory approval (OEM policy): clear
+            // it so the next trigger asks exactly once more.
+            ProjectionConsentStore.clear()
             completeFailure(CaptureFailureReason.CONSENT_EXPIRED)
         } else {
             completeFailure(CaptureFailureReason.SERVICE_START_FAILED)
@@ -221,13 +219,7 @@ class ScreenCaptureService : Service() {
     }
 
     private fun routeCapture(probablyProtected: Boolean) {
-        // "Google Lens directly" hands the full frame to Lens from within
-        // fallback Activity (a foreground Activity) because starting Lens from this
-        // background Service trips Android's background-activity-start limit.
-        val directLens = runCatching {
-            TriggerPreferenceStore(this).strategy == TriggerStrategy.DIRECT_LENS && !probablyProtected
-        }.getOrDefault(false)
-        launchFallbackActivity(probablyProtected, null, autoLens = directLens)
+        launchFallbackActivity(probablyProtected, null)
     }
 
     private fun launchFallbackActivity(

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="module_settings">Modül Ayarları</string>
+    <string name="access_xposed_service_failed">Xposed servisine erişim başarısız!</string>
+    <string name="system_trigger_service">Sistem tetikleme servisi</string>
+    <string name="trigger_by_long_press_home_button">Ana ekran butonuna basılı tutarak tetikleme</string>
+    <string name="trigger_by_long_press_gesture_handle">Uzun basma hareketiyle tetikle</string>
+    <string name="device_spoof_for_google">Google için cihaz kimliği taklidi</string>
+    <string name="manufacturer">Üretici</string>
+    <string name="brand">Marka</string>
+    <string name="model">Model</string>
+    <string name="device">Cihaz</string>
+    <string name="about">Hakkında</string>
+</resources>

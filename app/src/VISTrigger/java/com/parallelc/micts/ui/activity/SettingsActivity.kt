@@ -59,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -501,9 +502,9 @@ private fun TriggerStrategySettings(
     appConfig: Map<String, Any>,
     viewModel: SettingsViewModel,
 ) {
-    val strategy = TriggerStrategy.entries.firstOrNull {
-        it.name == appConfig[AppConfig.KEY_TRIGGER_STRATEGY] as? String
-    } ?: TriggerStrategy.AUTO
+    val strategy = TriggerStrategy.fromStoredName(
+        appConfig[AppConfig.KEY_TRIGGER_STRATEGY] as? String,
+    )
     var expanded by remember { mutableStateOf(false) }
 
     ListItem(
@@ -520,7 +521,11 @@ private fun TriggerStrategySettings(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
                 ) {
-                    TriggerStrategy.entries.forEach { option ->
+                    listOf(
+                        TriggerStrategy.AUTO,
+                        TriggerStrategy.NATIVE_ONLY,
+                        TriggerStrategy.LENS_FALLBACK,
+                    ).forEach { option ->
                         DropdownMenuItem(
                             text = { Text(triggerStrategyLabel(option)) },
                             onClick = {
@@ -559,8 +564,7 @@ private fun TriggerStrategySettings(
 private fun triggerStrategyLabel(strategy: TriggerStrategy): String = when (strategy) {
     TriggerStrategy.AUTO -> stringResource(R.string.trigger_strategy_auto)
     TriggerStrategy.NATIVE_ONLY -> stringResource(R.string.trigger_strategy_native)
-    TriggerStrategy.LENS_FALLBACK -> stringResource(R.string.trigger_strategy_lens)
-    TriggerStrategy.DIRECT_LENS -> stringResource(R.string.trigger_strategy_direct_lens)
+    else -> stringResource(R.string.trigger_strategy_lens)
 }
 
 @Composable
@@ -715,6 +719,7 @@ private fun AiSettingsSection(
     viewModel: SettingsViewModel,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val aiEnabled = appConfig[AppConfig.KEY_AI_ENABLED] as? Boolean ?: false
     val aiBaseUrl = appConfig[AppConfig.KEY_AI_BASE_URL] as? String ?: AppConfig.DEFAULT_AI_BASE_URL
     val aiApiKey = appConfig[AppConfig.KEY_AI_API_KEY] as? String ?: ""
@@ -844,14 +849,21 @@ private fun AiSettingsSection(
                                 onSuccess = { count ->
                                     Toast.makeText(
                                         context,
-                                        context.getString(R.string.ai_test_success, count),
+                                        resources.getQuantityString(
+                                            R.plurals.ai_test_success,
+                                            count,
+                                            count,
+                                        ),
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 },
                                 onFailure = { error ->
                                     Toast.makeText(
                                         context,
-                                        context.getString(R.string.ai_test_failed, error.localizedMessage ?: error.message),
+                                        resources.getString(
+                                            R.string.ai_test_failed,
+                                            error.localizedMessage ?: error.message,
+                                        ),
                                         Toast.LENGTH_LONG
                                     ).show()
                                 }

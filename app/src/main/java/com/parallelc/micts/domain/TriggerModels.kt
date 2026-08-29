@@ -5,7 +5,16 @@ enum class TriggerStrategy {
     NATIVE_ONLY,
     LENS_FALLBACK,
     @Deprecated("Kept only to migrate settings from older releases")
-    DIRECT_LENS,
+    DIRECT_LENS;
+
+    companion object {
+        /** Maps the removed direct-Lens preference onto the supported fallback flow. */
+        @Suppress("DEPRECATION")
+        fun fromStoredName(value: String?): TriggerStrategy = when (value) {
+            DIRECT_LENS.name -> LENS_FALLBACK
+            else -> entries.firstOrNull { it.name == value } ?: AUTO
+        }
+    }
 }
 
 enum class AutoResolution {
@@ -40,13 +49,13 @@ class TriggerCoordinator {
     ): TriggerAction = when (strategy) {
         TriggerStrategy.NATIVE_ONLY -> TriggerAction.InvokeNative
         TriggerStrategy.LENS_FALLBACK -> TriggerAction.RequestLensCapture
-        TriggerStrategy.DIRECT_LENS -> TriggerAction.RequestLensCapture
         TriggerStrategy.AUTO -> when (autoResolution) {
             AutoResolution.UNKNOWN,
             AutoResolution.NATIVE_CONFIRMED -> TriggerAction.InvokeNative
             AutoResolution.PENDING_CONFIRMATION -> TriggerAction.RequestNativeConfirmation
             AutoResolution.FALLBACK_CONFIRMED -> TriggerAction.RequestLensCapture
         }
+        else -> TriggerAction.RequestLensCapture
     }
 
     fun afterNative(

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="module_settings">模組設定</string>
+    <string name="access_xposed_service_failed">存取xposed服務失敗</string>
+    <string name="system_trigger_service">系統觸發服務</string>
+    <string name="trigger_by_long_press_home_button">長按主畫面按鈕觸發</string>
+    <string name="trigger_by_long_press_gesture_handle">長按手勢導覽列觸發</string>
+    <string name="device_spoof_for_google">Google裝置偽裝</string>
+    <string name="manufacturer">製造商</string>
+    <string name="brand">品牌</string>
+    <string name="model">型號</string>
+    <string name="device">裝置</string>
+    <string name="about">關於</string>
+</resources>

@@ -87,9 +87,9 @@ private fun LeanSettingsScreen(viewModel: SettingsViewModel) {
     var captureMode by remember { mutableStateOf(capturePreferences.mode) }
     var strategyMenuExpanded by remember { mutableStateOf(false) }
     var captureMenuExpanded by remember { mutableStateOf(false) }
-    val strategy = TriggerStrategy.entries.firstOrNull {
-        it.name == appConfig[AppConfig.KEY_TRIGGER_STRATEGY]
-    } ?: TriggerStrategy.AUTO
+    val strategy = TriggerStrategy.fromStoredName(
+        appConfig[AppConfig.KEY_TRIGGER_STRATEGY] as? String,
+    )
 
     Scaffold(
         topBar = {
@@ -304,8 +304,7 @@ private fun SliderSetting(title: String, value: Float, onValueChange: (Float) ->
 private fun triggerStrategyLabel(strategy: TriggerStrategy): String = when (strategy) {
     TriggerStrategy.AUTO -> stringResource(R.string.trigger_strategy_auto)
     TriggerStrategy.NATIVE_ONLY -> stringResource(R.string.trigger_strategy_native)
-    TriggerStrategy.LENS_FALLBACK,
-    TriggerStrategy.DIRECT_LENS -> stringResource(R.string.trigger_strategy_lens)
+    else -> stringResource(R.string.trigger_strategy_lens)
 }
 
 @Composable

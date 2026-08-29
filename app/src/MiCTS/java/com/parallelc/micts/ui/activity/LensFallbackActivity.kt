@@ -74,13 +74,13 @@ class LensFallbackActivity : ComponentActivity() {
             MiCTSTheme {
                 val failure = failureReason
                 when {
-                    failure != null -> CaptureProblem(
+                    failure != null -> LensCaptureProblem(
                         title = stringResource(R.string.capture_failed_title),
                         message = stringResource(captureFailureMessage(failure)),
                         onRetake = ::retake,
                         onCancel = ::cancel,
                     )
-                    probablyProtected -> CaptureProblem(
+                    probablyProtected -> LensCaptureProblem(
                         title = stringResource(R.string.protected_capture_title),
                         message = stringResource(R.string.protected_capture_message),
                         onRetake = ::retake,
@@ -169,7 +169,7 @@ private fun LensLoadingScreen(onCancel: () -> Unit) {
 }
 
 @androidx.compose.runtime.Composable
-private fun CaptureProblem(
+private fun LensCaptureProblem(
     title: String,
     message: String,
     onRetake: () -> Unit,
@@ -199,7 +199,7 @@ private fun CaptureProblem(
 }
 
 @androidx.compose.runtime.Composable
-private fun LensUnavailableDialog(
+internal fun LensUnavailableDialog(
     onDismiss: () -> Unit,
     onOpenGoogleStore: () -> Unit,
 ) {

@@ -1,39 +1,51 @@
-import com.android.build.api.variant.impl.VariantOutputImpl
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.lsplugin.jgit)
-    alias(libs.plugins.lsplugin.apksign)
     alias(libs.plugins.kotlin.compose)
-}
-
-apksign {
-    storeFileProperty = "androidStoreFile"
-    storePasswordProperty = "androidStorePassword"
-    keyAliasProperty = "androidKeyAlias"
-    keyPasswordProperty = "androidKeyPassword"
 }
 
 val repo = jgit.repo()
 val commitCount = (repo?.commitCount("refs/remotes/origin/main") ?: 1)
 val latestTag = repo?.latestTag?.removePrefix("v") ?: "1.0"
+val releaseSigningProperties = listOf(
+    "androidStoreFile",
+    "androidStorePassword",
+    "androidKeyAlias",
+    "androidKeyPassword",
+).associateWith(providers::gradleProperty)
+val releaseSigningConfigured = releaseSigningProperties.values.all { it.isPresent }
 
 android {
     namespace = "com.parallelc.micts"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 28
-        targetSdk = 36
+        targetSdk = 37
         versionCode = commitCount
         versionName = latestTag
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    if (releaseSigningConfigured) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseSigningProperties.getValue("androidStoreFile").get())
+                storePassword = releaseSigningProperties.getValue("androidStorePassword").get()
+                keyAlias = releaseSigningProperties.getValue("androidKeyAlias").get()
+                keyPassword = releaseSigningProperties.getValue("androidKeyPassword").get()
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -41,9 +53,10 @@ android {
         }
     }
 
-    buildFeatures {
-        buildConfig = true
-        resValues = true
+    bundle {
+        language {
+            enableSplit = false
+        }
     }
 
     flavorDimensions += "app"
@@ -71,19 +84,12 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
     }
-}
 
-androidComponents {
-    onVariants { variant ->
-        variant.outputs.forEach { output ->
-            require(output is VariantOutputImpl)
-
-            val vName = output.versionName.get()
-            val vCode = output.versionCode.get()
-
-            output.outputFileName.set("MiCTS_${vName}_${vCode}_${variant.name}.apk")
-        }
+    lint {
+        baseline = file("lint-baseline.xml")
+        warningsAsErrors = true
     }
 }
 

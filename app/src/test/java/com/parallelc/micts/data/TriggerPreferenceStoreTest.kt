@@ -46,6 +46,19 @@ class TriggerPreferenceStoreTest {
         assertEquals(TriggerStrategy.AUTO, store.strategy)
         assertEquals(AutoResolution.UNKNOWN, store.autoResolution)
     }
+
+    @Test
+    fun legacyDirectLensPreferenceMigratesToLensFallback() {
+        val backend = InMemoryTriggerPreferenceBackend().apply {
+            putString(AppConfig.KEY_TRIGGER_STRATEGY, "DIRECT_LENS")
+        }
+
+        assertEquals(TriggerStrategy.LENS_FALLBACK, TriggerPreferenceStore(backend).strategy)
+        assertEquals(
+            TriggerStrategy.LENS_FALLBACK.name,
+            backend.getString(AppConfig.KEY_TRIGGER_STRATEGY, ""),
+        )
+    }
 }
 
 private class InMemoryTriggerPreferenceBackend : TriggerPreferenceBackend {

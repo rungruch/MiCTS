@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="module_settings">モジュールの設定</string>
+    <string name="access_xposed_service_failed">Xposed サービスのアクセスに失敗しました</string>
+    <string name="system_trigger_service">システムトリガーサービス</string>
+    <string name="trigger_by_long_press_home_button">ホームボタンを長押しでトリガーする</string>
+    <string name="trigger_by_long_press_gesture_handle">ジェスチャーハンドルの長押しでトリガーする</string>
+    <string name="device_spoof_for_google">Google のデバイスに偽装</string>
+    <string name="manufacturer">製造</string>
+    <string name="brand">ブランド</string>
+    <string name="model">モデル</string>
+    <string name="device">デバイス</string>
+    <string name="about">アプリについて</string>
+</resources>

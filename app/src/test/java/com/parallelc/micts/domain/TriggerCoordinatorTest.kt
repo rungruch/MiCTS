@@ -112,6 +112,7 @@ class TriggerCoordinatorTest {
     }
 
     @Test
+    @Suppress("DEPRECATION")
     fun directLensRequestsCaptureLikeOtherManualFallbacks() {
         assertEquals(
             TriggerAction.RequestLensCapture,

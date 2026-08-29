@@ -78,7 +78,6 @@ class MainActivity : ComponentActivity() {
     private val nativeGateway = AndroidNativeTriggerGateway()
     private lateinit var triggerPreferences: TriggerPreferenceStore
     private lateinit var capturePreferences: CapturePreferenceStore
-    private lateinit var projectionConsent: ProjectionConsentStore
     private var captureRequestInFlight = false
     private var captureServiceStarted = false
 
@@ -95,7 +94,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
             capturePreferences.mode == CaptureMode.REMEMBER_CONSENT
         ) {
-            projectionConsent.save(result.resultCode, resultData)
+            ProjectionConsentStore.save(result.resultCode, resultData)
         }
         startCaptureService(
             ScreenCaptureService.createIntent(
@@ -114,7 +113,6 @@ class MainActivity : ComponentActivity() {
         }
         triggerPreferences = TriggerPreferenceStore(this)
         capturePreferences = CapturePreferenceStore(this)
-        projectionConsent = ProjectionConsentStore(this)
         captureRequestInFlight = savedInstanceState?.getBoolean(
             STATE_CAPTURE_REQUEST_IN_FLIGHT,
             false,
@@ -198,23 +196,17 @@ class MainActivity : ComponentActivity() {
     private fun showNativeConfirmation(vibrate: Boolean) {
         setContent {
             MiCTSTheme {
-                AlertDialog(
-                    onDismissRequest = ::finish,
-                    title = { Text(stringResource(R.string.native_confirmation_title)) },
-                    text = { Text(stringResource(R.string.native_confirmation_message)) },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            val transition = coordinator.afterConfirmation(true)
-                            triggerPreferences.autoResolution = transition.autoResolution
-                            performAction(transition.action, vibrate)
-                        }) { Text(stringResource(R.string.native_confirmation_yes)) }
+                NativeConfirmationDialog(
+                    onDismiss = ::finish,
+                    onNativeWorked = {
+                        val transition = coordinator.afterConfirmation(true)
+                        triggerPreferences.autoResolution = transition.autoResolution
+                        performAction(transition.action, vibrate)
                     },
-                    dismissButton = {
-                        OutlinedButton(onClick = {
-                            val transition = coordinator.afterConfirmation(false)
-                            triggerPreferences.autoResolution = transition.autoResolution
-                            performAction(transition.action, vibrate)
-                        }) { Text(stringResource(R.string.native_confirmation_no)) }
+                    onUseLensFallback = {
+                        val transition = coordinator.afterConfirmation(false)
+                        triggerPreferences.autoResolution = transition.autoResolution
+                        performAction(transition.action, vibrate)
                     },
                 )
             }
@@ -239,7 +231,7 @@ class MainActivity : ComponentActivity() {
             capturePermissionCoordinator.nextAction(
                 apiLevel = Build.VERSION.SDK_INT,
                 mode = capturePreferences.mode,
-                consentStored = projectionConsent.load() != null,
+                consentStored = ProjectionConsentStore.load() != null,
                 explanationSeen = capturePreferences.consentExplanationSeen,
             )
         ) {
@@ -266,17 +258,12 @@ class MainActivity : ComponentActivity() {
     private fun showCaptureSetup() {
         setContent {
             MiCTSTheme {
-                CapturePermissionScreen(
-                    title = stringResource(R.string.capture_setup_title),
-                    message = stringResource(R.string.capture_setup_message),
-                    disclosure = stringResource(R.string.capture_setup_privacy_disclosure),
-                    primaryLabel = stringResource(R.string.approve_once),
-                    onPrimary = {
+                CaptureSetupScreen(
+                    onApproveOnce = {
                         capturePreferences.mode = CaptureMode.REMEMBER_CONSENT
                         requestMediaProjection()
                     },
-                    secondaryLabel = stringResource(R.string.ask_every_time_instead),
-                    onSecondary = {
+                    onAskEveryTime = {
                         capturePreferences.mode = CaptureMode.ASK_EVERY_TIME
                         requestMediaProjection()
                     },
@@ -289,12 +276,8 @@ class MainActivity : ComponentActivity() {
     private fun showConsentExplanation() {
         setContent {
             MiCTSTheme {
-                CapturePermissionScreen(
-                    title = stringResource(R.string.consent_explanation_title),
-                    message = stringResource(R.string.consent_explanation_message),
-                    disclosure = stringResource(R.string.ask_every_time_privacy_disclosure),
-                    primaryLabel = stringResource(R.string.continue_label),
-                    onPrimary = {
+                ConsentExplanationScreen(
+                    onContinue = {
                         capturePreferences.consentExplanationSeen = true
                         capturePreferences.mode = CaptureMode.ASK_EVERY_TIME
                         requestMediaProjection()
@@ -306,7 +289,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun captureWithStoredConsent() {
-        val consent = projectionConsent.load()
+        val consent = ProjectionConsentStore.load()
         if (consent == null) {
             requestMediaProjection()
             return
@@ -353,6 +336,39 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+internal fun CaptureSetupScreen(
+    onApproveOnce: () -> Unit,
+    onAskEveryTime: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    CapturePermissionScreen(
+        title = stringResource(R.string.capture_setup_title),
+        message = stringResource(R.string.capture_setup_message),
+        disclosure = stringResource(R.string.capture_setup_privacy_disclosure),
+        primaryLabel = stringResource(R.string.approve_once),
+        onPrimary = onApproveOnce,
+        secondaryLabel = stringResource(R.string.ask_every_time_instead),
+        onSecondary = onAskEveryTime,
+        onCancel = onCancel,
+    )
+}
+
+@Composable
+internal fun ConsentExplanationScreen(
+    onContinue: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    CapturePermissionScreen(
+        title = stringResource(R.string.consent_explanation_title),
+        message = stringResource(R.string.consent_explanation_message),
+        disclosure = stringResource(R.string.ask_every_time_privacy_disclosure),
+        primaryLabel = stringResource(R.string.continue_label),
+        onPrimary = onContinue,
+        onCancel = onCancel,
+    )
+}
+
+@Composable
 private fun CapturePermissionScreen(
     title: String,
     message: String,
@@ -396,7 +412,7 @@ private fun CapturePermissionScreen(
 }
 
 @Composable
-private fun CaptureProblem(
+internal fun CaptureProblem(
     title: String,
     message: String,
     onRetake: () -> Unit,
@@ -420,4 +436,27 @@ private fun CaptureProblem(
             TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
         }
     }
+}
+
+@Composable
+internal fun NativeConfirmationDialog(
+    onDismiss: () -> Unit,
+    onNativeWorked: () -> Unit,
+    onUseLensFallback: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.native_confirmation_title)) },
+        text = { Text(stringResource(R.string.native_confirmation_message)) },
+        confirmButton = {
+            TextButton(onClick = onNativeWorked) {
+                Text(stringResource(R.string.native_confirmation_yes))
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onUseLensFallback) {
+                Text(stringResource(R.string.native_confirmation_no))
+            }
+        },
+    )
 }

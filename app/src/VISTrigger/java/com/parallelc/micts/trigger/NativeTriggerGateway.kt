@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.SystemClock
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
@@ -82,13 +83,22 @@ class AndroidNativeTriggerGateway : NativeTriggerGateway {
 
     private fun vibrate(context: Context) {
         runCatching {
-            (context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator).run {
+            context.getSystemService(Vibrator::class.java).run {
                 val attributes = AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
                     .setFlags(128)
                     .build()
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK), attributes)
+                    val effect = VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        vibrate(
+                            effect,
+                            VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ACCESSIBILITY),
+                        )
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vibrate(effect, attributes)
+                    }
                 } else {
                     @Suppress("DEPRECATION")
                     vibrate(longArrayOf(0, 1, 75, 76), -1, attributes)

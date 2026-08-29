@@ -1,20 +1,107 @@
-name: CI Build
+name: Build, verify, and test
 
 on:
   workflow_dispatch:
+    inputs:
+      api_level:
+        description: Android emulator API level
+        required: true
+        default: "37"
+        type: choice
+        options:
+          - "28"
+          - "33"
+          - "34"
+          - "37"
   push:
-    branches: [ main ]
-    tags: [ v* ]
-    paths-ignore:
-      - '*.md'
-      - '.github/**'
-      - '!.github/workflows/**'
-      - 'crowdin.yml'
+    branches: [main]
+    tags: ["v*"]
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+
 jobs:
-  build:
+  verify:
+    name: Verify flavors
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-home-cache-cleanup: true
+
+      - name: Run flavor unit tests
+        run: ./gradlew :app:testMiCTSDebugUnitTest :app:testVISTriggerDebugUnitTest --no-parallel
+
+      - name: Lint both flavors
+        run: ./gradlew :app:lintMiCTSDebug :app:lintVISTriggerDebug --no-parallel
+
+      - name: Assemble debug APKs
+        run: ./gradlew :app:assembleMiCTSDebug :app:assembleVISTriggerDebug --no-parallel
+
+      - name: Check MiCTS APK isolation
+        run: |
+          apk=app/build/outputs/apk/MiCTS/debug/app-MiCTS-debug.apk
+          test -f "$apk"
+          if unzip -l "$apk" | grep -q 'META-INF/xposed/'; then
+            echo "MiCTS APK must not contain Xposed metadata."
+            exit 1
+          fi
+          if unzip -p "$apk" 'classes*.dex' | strings | grep -Eq 'com/parallelc/micts/(hooker|data/Ai|ui/activity/CropActivity|ui/viewmodel/CropViewModel|domain/(AiModels|CropGeometry|RecognitionModels))'; then
+            echo "MiCTS APK contains VISTrigger-only hook or editor code."
+            exit 1
+          fi
+
+      - name: Check VISTrigger Xposed metadata
+        run: |
+          apk=app/build/outputs/apk/VISTrigger/debug/app-VISTrigger-debug.apk
+          test -f "$apk"
+          unzip -l "$apk" | grep -q 'META-INF/xposed/java_init.list'
+
+  connected-tests:
+    name: Connected tests (API ${{ inputs.api_level }})
+    if: github.event_name == 'workflow_dispatch'
+    needs: verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run connected flavor tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ inputs.api_level }}
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          script: ./gradlew :app:connectedMiCTSDebugAndroidTest :app:connectedVISTriggerDebugAndroidTest --no-parallel
+
+  release:
+    name: Signed release artifacts
+    if: github.event_name == 'push'
+    needs: verify
     runs-on: ubuntu-latest
 
     steps:
@@ -23,57 +110,60 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Write key
-        run: |
-          if [ ! -z "${{ secrets.KEY_STORE }}" ]; then
-            echo androidStorePassword='${{ secrets.KEY_STORE_PASSWORD }}' >> gradle.properties
-            echo androidKeyAlias='${{ secrets.ALIAS }}' >> gradle.properties
-            echo androidKeyPassword='${{ secrets.KEY_PASSWORD }}' >> gradle.properties
-            echo androidStoreFile='key.jks' >> gradle.properties
-            echo ${{ secrets.KEY_STORE }} | base64 --decode > key.jks
-          fi
-
-      - name: Setup Java
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: "temurin"
+          distribution: temurin
           java-version: "17"
 
-      - name: Setup Gradle
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-home-cache-cleanup: true
 
-      - name: Build MiCTS Release
+      - name: Configure release signing
+        env:
+          KEY_STORE_BASE64: ${{ secrets.KEY_STORE }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo 'org.gradle.caching=true' >> ~/.gradle/gradle.properties
-          echo 'org.gradle.parallel=true' >> ~/.gradle/gradle.properties
-          echo 'org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8 -XX:+UseParallelGC' >> ~/.gradle/gradle.properties
-
-          ./gradlew :app:assembleMiCTSRelease
-          echo "MiCTS_APK_PATH=$(find app/build/outputs/apk/MiCTS/release -name '*.apk')" >> $GITHUB_ENV
-
-      - name: Build VISTrigger Release
-        run: |
-          ./gradlew :app:assembleVISTriggerRelease
-          echo "VISTrigger_APK_PATH=$(find app/build/outputs/apk/VISTrigger/release -name '*.apk')" >> $GITHUB_ENV
-
-      - name: Set NAME_SUFFIX
-        run: |
-          if [ "${{ github.ref_type }}" == "tag" ]; then
-            echo "NAME_SUFFIX=${{ github.ref_name }}" >> $GITHUB_ENV
-          else
-            echo "NAME_SUFFIX=${{ github.event.head_commit.id }}" >> $GITHUB_ENV
+          if [ -z "$KEY_STORE_BASE64" ] || [ -z "$KEY_STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "Release signing credentials are required for main and tag builds."
+            exit 1
           fi
+          keystore="$RUNNER_TEMP/release.jks"
+          printf '%s' "$KEY_STORE_BASE64" | base64 --decode > "$keystore"
+          {
+            echo "ORG_GRADLE_PROJECT_androidStoreFile=$keystore"
+            echo "ORG_GRADLE_PROJECT_androidStorePassword=$KEY_STORE_PASSWORD"
+            echo "ORG_GRADLE_PROJECT_androidKeyAlias=$KEY_ALIAS"
+            echo "ORG_GRADLE_PROJECT_androidKeyPassword=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
 
-      - name: Upload MiCTS Artifacts
+      - name: Build minified release APKs
+        run: ./gradlew :app:assembleMiCTSRelease :app:assembleVISTriggerRelease --no-parallel
+
+      - name: Verify signatures and rename artifacts
+        run: |
+          apksigner="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -x "$apksigner"
+          mkdir -p dist
+          for flavor in MiCTS VISTrigger; do
+            output_dir="app/build/outputs/apk/$flavor/release"
+            metadata="$output_dir/output-metadata.json"
+            test -f "$metadata"
+            apk_file="$(jq -r '.elements[0].outputFile' "$metadata")"
+            version_name="$(jq -r '.elements[0].versionName' "$metadata")"
+            version_code="$(jq -r '.elements[0].versionCode' "$metadata")"
+            apk="$output_dir/$apk_file"
+            "$apksigner" verify --verbose --print-certs "$apk"
+            cp "$apk" "dist/${flavor}-${version_name}-${version_code}-release.apk"
+          done
+
+      - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
-          path: ${{ env.MiCTS_APK_PATH }}
-          name: MiCTS_${{ env.NAME_SUFFIX }}
-
-      - name: Upload VISTrigger Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          path: ${{ env.VISTrigger_APK_PATH }}
-          name: VISTrigger_${{ env.NAME_SUFFIX }}
+          name: release-apks-${{ github.ref_name }}
+          path: dist/*.apk
+          if-no-files-found: error

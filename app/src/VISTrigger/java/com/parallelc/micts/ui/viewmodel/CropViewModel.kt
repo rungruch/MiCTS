@@ -375,6 +375,5 @@ class CropViewModel(
         recognitionGateway?.close()
         aiGateway?.close()
         (_state.value.content as? CaptureContentState.Ready)?.bitmap?.recycle()
-        super.onCleared()
     }
 }

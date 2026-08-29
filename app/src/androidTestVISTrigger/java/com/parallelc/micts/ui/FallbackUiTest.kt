@@ -4,10 +4,11 @@ import android.graphics.Bitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.parallelc.micts.domain.FloatRect
 import com.parallelc.micts.domain.ViewportState
 import com.parallelc.micts.ui.activity.CaptureProblem
@@ -49,15 +50,6 @@ class FallbackUiTest {
         composeRule.onNodeWithText("Yes, keep native").performClick()
         assertTrue(nativeSelected)
 
-        composeRule.setContent {
-            MiCTSTheme {
-                NativeConfirmationDialog(
-                    onDismiss = {},
-                    onNativeWorked = {},
-                    onUseLensFallback = { lensSelected = true },
-                )
-            }
-        }
         composeRule.onNodeWithText("No, use Lens fallback").performClick()
         assertTrue(lensSelected)
     }
@@ -77,7 +69,10 @@ class FallbackUiTest {
 
         composeRule.onNodeWithText("Screen capture failed").assertIsDisplayed()
         composeRule.onNodeWithText("Retake").assertIsDisplayed()
-        composeRule.onNodeWithText("Cancel").assertIsDisplayed()
+        composeRule.onNodeWithText(
+            InstrumentationRegistry.getInstrumentation().targetContext
+                .getString(android.R.string.cancel),
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -117,15 +112,6 @@ class FallbackUiTest {
         composeRule.onNodeWithText("Approve once").performClick()
         assertTrue(approveOnceSelected)
 
-        composeRule.setContent {
-            MiCTSTheme {
-                CaptureSetupScreen(
-                    onApproveOnce = {},
-                    onAskEveryTime = { askEveryTimeSelected = true },
-                    onCancel = {},
-                )
-            }
-        }
         composeRule.onNodeWithText("Ask every time instead").performClick()
         assertTrue(askEveryTimeSelected)
     }
@@ -209,10 +195,11 @@ class FallbackUiTest {
     @Test
     fun textActionsEnableOnlyWhenOcrTextIsSelected() {
         val bitmap = Bitmap.createBitmap(200, 400, Bitmap.Config.ARGB_8888)
+        val selectedText = androidx.compose.runtime.mutableStateOf("")
         composeRule.setContent {
             MiCTSTheme {
                 CropScreen(
-                    state = readyState(bitmap),
+                    state = readyState(bitmap).copy(selectedText = selectedText.value),
                     bitmap = bitmap,
                     onSelectionChanged = {},
                     onViewportChanged = {},
@@ -228,21 +215,8 @@ class FallbackUiTest {
         composeRule.onNodeWithText("Copy").assertIsNotEnabled()
         composeRule.onNodeWithText("Lens").assertIsEnabled()
 
-        composeRule.setContent {
-            MiCTSTheme {
-                CropScreen(
-                    state = readyState(bitmap).copy(selectedText = "Huawei MatePad"),
-                    bitmap = bitmap,
-                    onSelectionChanged = {},
-                    onViewportChanged = {},
-                    onLineTapped = {},
-                    onRetryRecognition = {},
-                    onCopy = {},
-                    onSearch = {},
-                    onTranslate = {},
-                    onLens = {},
-                )
-            }
+        composeRule.runOnIdle {
+            selectedText.value = "Huawei MatePad"
         }
         composeRule.onNodeWithText("Huawei MatePad").assertIsDisplayed()
         composeRule.onNodeWithText("Copy").assertIsEnabled()

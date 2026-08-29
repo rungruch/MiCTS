@@ -12,7 +12,7 @@
 - The app invokes the existing direct voice-interaction binder path for native Circle to Search.
 - Auto mode asks whether native Circle to Search appeared and remembers the answer.
 - Lens fallback uses one MediaProjection capture and shares the complete temporary JPEG directly with the Google app.
-- Android 14+ capture consent remains per-trigger; Android 9–13 may reuse remembered consent.
+- Android 14+ capture consent remains per-trigger; Android 9–13 may reuse consent only while the app process remains alive.
 
 ## Verification
 
@@ -23,10 +23,9 @@
 
 ## Status (2026-08-28)
 
-- Both debug flavors build with JDK 17 (Corretto 17); unit tests pass for both flavors.
-- MiCTS release APK builds (`assembleMiCTSRelease`), R8-minified, verified Xposed-free.
-- Release APK `MiCTS_1.0_9_MiCTSRelease.apk` installed on Huawei SGT-LX9 via adb.
-- Note: release APK is currently signed with the debug certificate fallback (no keystore configured).
+- Both debug flavors build with JDK 17; unit tests pass for both flavors.
+- MiCTS release APK builds (`assembleMiCTSRelease`), is R8-minified, and is verified Xposed-free.
+- Release signing uses standard AGP credentials from Gradle properties or CI environment variables. A local release build without those credentials is intentionally unsigned; tag CI fails instead of falling back to a debug certificate.
 
 ## Measured trigger-to-Lens latency (Huawei SGT-LX9, 2026-08-28)
 
@@ -35,7 +34,7 @@ Timeline captured from logcat on a real trigger:
 | Stage | Duration | Owner |
 | --- | --- | --- |
 | Trigger → MediaProjection ready | ~194 ms | MiCTS (service start + projection setup) |
-| First frame + full-res PNG encode + write | ~276 ms | MiCTS |
+| First frame + full-res JPEG encode + write | ~276 ms | MiCTS |
 | Trampoline activity → `ACTION_SEND` | ~23 ms | MiCTS |
 | Google app → Lens first frame drawn | ~134 ms | Google app (warm process) |
 | **Total trigger → Lens visible** | **~650 ms** | |
@@ -58,18 +57,18 @@ MiCTS now encodes the Lens-only fallback as JPEG at quality 90. VISTrigger keeps
 - Ten complete warm physical-device trials measured median stages of 173 ms trigger → MediaProjection start, 123 ms projection start → JPEG `ACTION_SEND`, 118 ms send → Lens displayed, and 413 ms total. The middle stage includes the prior ~23 ms trampoline/routing cost, putting capture/encoding near 100 ms.
 - Compared with the earlier ~650 ms end-to-end measurement, the new 413 ms median is about 36% faster and passes the 30% acceptance gate. Google Lens displayed its post-capture “Select text” UI, confirming JPEG acceptance and processing.
 
-## Plan 2: Release signing
+## Plan 2: Release signing (completed)
 
-The `apksign` plugin falls back to the debug certificate when signing properties are missing.
+Standard AGP signing replaces the former `apksign` plugin. Provide `androidStoreFile`, `androidStorePassword`, `androidKeyAlias`, and `androidKeyPassword` through uncommitted Gradle properties or CI environment variables.
 
-- Add to `~/.gradle/gradle.properties` (do not commit): `androidStoreFile`, `androidStorePassword`, `androidKeyAlias`, `androidKeyPassword`.
-- Re-run `./gradlew :app:assembleMiCTSRelease` and verify with `apksigner verify --print-certs`.
-- Uninstall the debug-signed build before installing the release-keyed build (signature mismatch blocks upgrade and resets preferences).
+- Local release builds without all four properties are intentionally unsigned; no debug-certificate fallback exists.
+- Main and tag CI builds require the credentials, verify both APKs with `apksigner`, rename from `output-metadata.json`, and upload the artifacts.
+- A test release keystore has verified the standard AGP signing path and both flavor signatures.
 
 ## Plan 3: Instrumented tests
 
 - The MiCTS JPEG and VISTrigger PNG encoding tests pass on the Pixel Android 17 preview emulator.
 - The MiCTS JPEG encoding, decode, MIME, and legacy-cleanup tests also pass on the physical Huawei SGT-LX9 (Android 12/API 31), and the release build completes a real JPEG handoff to Google Lens.
-- The flavor-specific test directories were renamed to Gradle's `androidTest<Flavor>`/`test<Flavor>` convention so they are executed instead of silently producing zero-test reports.
-- The existing VISTrigger Compose UI tests are incompatible with the Android 17 preview Espresso runtime (`InputManager.getInstance` is unavailable); run the full suite on a supported Android 9–16 device/emulator.
-- Remaining coverage: native confirmation dialog, permission denial, protected-content capture, Lens-unavailable dialog, and retake/cancel UI behavior on a supported Android 9–16 test target.
+- The flavor-specific test directories use Gradle's `androidTest<Flavor>`/`test<Flavor>` convention, so both flavor test suites execute rather than silently producing zero-test reports.
+- MiCTS now has Compose coverage for native confirmation, permission denial, setup choices, Android 14 consent explanation, protected-content messaging, and Lens-unavailable fallback. VISTrigger retains its crop/editor coverage.
+- The manual emulator workflow runs connected tests at API 28, 33, 34, or 37; real-device Android 17 and libxposed 101/102 validation remains required before documenting Android 17 support.

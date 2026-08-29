@@ -63,7 +63,7 @@ class CompatibilityReportProvider(private val context: Context) {
             selectedTriggerService = selectedTriggerService,
             captureMode = captureMode,
             consentReuseSupported = consentReuseSupported,
-            consentStored = consentReuseSupported && ProjectionConsentStore(context).load() != null,
+            consentStored = consentReuseSupported && ProjectionConsentStore.load() != null,
         )
     }
 }

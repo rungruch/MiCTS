@@ -1,10 +1,6 @@
 package com.parallelc.micts.data
 
-import android.content.Context
 import android.content.Intent
-import android.os.Parcel
-import android.util.Base64
-import com.parallelc.micts.config.AppConfig
 
 /**
  * Remembers the user's MediaProjection approval on Android 13 and
@@ -13,10 +9,11 @@ import com.parallelc.micts.config.AppConfig
  * level, so callers must not store or reuse tokens there.
  *
  * The consent Intent contains an active IPC IBinder token that lives in memory.
- * Android may still invalidate a token (reboot, OEM policy); callers clear
- * this store and re-prompt when the token fails.
+ * The store is deliberately process-scoped: the token is never persisted to
+ * disk, so process death requires a fresh approval. Android may also invalidate
+ * a live token; callers clear this store and re-prompt when it fails.
  */
-class ProjectionConsentStore(context: Context) {
+object ProjectionConsentStore {
     fun load(): Pair<Int, Intent>? = cachedConsent
 
     fun save(resultCode: Int, resultData: Intent) {
@@ -27,8 +24,6 @@ class ProjectionConsentStore(context: Context) {
         cachedConsent = null
     }
 
-    companion object {
-        @Volatile
-        private var cachedConsent: Pair<Int, Intent>? = null
-    }
+    @Volatile
+    private var cachedConsent: Pair<Int, Intent>? = null
 }
