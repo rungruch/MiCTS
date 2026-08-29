@@ -203,9 +203,9 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             },
             text = {
                 Text(buildAnnotatedString {
-                    withLink(LinkAnnotation.Url(url = "https://github.com/parallelcc/micts")) {
+                    withLink(LinkAnnotation.Url(url = "https://github.com/rungruch/MiCTS")) {
                         withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-                            append("https://github.com/parallelcc/micts")
+                            append("https://github.com/rungruch/MiCTS")
                         }
                     }
                 })
