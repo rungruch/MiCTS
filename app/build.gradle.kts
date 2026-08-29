@@ -51,6 +51,11 @@ android {
                 "proguard-rules.pro"
             )
         }
+        create("sideload") {
+            initWith(getByName("release"))
+            isDebuggable = false
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
 
     bundle {
