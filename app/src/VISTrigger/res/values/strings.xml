@@ -16,7 +16,6 @@
     <string name="compatibility_cts_service">CTS system service</string>
     <string name="compatibility_lens_share">Google Lens image share</string>
     <string name="compatibility_trigger_service">Selected trigger service</string>
-    <string name="compatibility_capture_method">Capture method</string>
     <string name="compatibility_consent_reuse">Single approval supported by Android</string>
     <string name="compatibility_consent_stored">Screen-capture approval remembered</string>
     <string name="compatibility_entitlement_unknown">Google controls native CTS eligibility privately; MiCTS cannot confirm or change it without root.</string>

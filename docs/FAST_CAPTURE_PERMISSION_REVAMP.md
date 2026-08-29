@@ -17,8 +17,8 @@ MiCTS separates capture routing cleanly by Android platform capabilities:
 
 | Android Version | Capture Strategy | User Experience |
 | --- | --- | --- |
-| **Android 9–13 (API 28–33)** | `REMEMBER_CONSENT` (`ProjectionConsentStore`) | Consent dialog shown **once per app process**. Subsequent triggers capture silently while the process remains alive. |
-| **Android 14+ (API 34+)** | `ASK_EVERY_TIME` | Platform enforces single-use tokens by design. Prompts dialog before each capture after a one-time explanation. |
+| **Android 9–13 (API 28–33)** | Automatic reuse (`ProjectionConsentStore`) | Consent dialog shown **once per app process**. Subsequent triggers capture silently while the process remains alive. |
+| **Android 14+ (API 34+)** | Fresh system consent | Platform enforces single-use tokens by design. The system dialog opens before each capture. |
 
 ### 1. Reusable Consent without Fragile Armed Services (Android ≤ 13)
 Earlier iterations kept a long-lived foreground service with a persistent `MediaProjection` instance ("armed service"). This suffered from race conditions, state drift, and process death.
@@ -31,22 +31,20 @@ The current architecture avoids that fragility:
 
 ### 2. Android 14+ Handling (API ≥ 34)
 Android 14 explicitly throws a `SecurityException` if a MediaProjection token is reused across sessions.
-- `CapturePreferenceStore` and `CapturePermissionCoordinator` recognize API ≥ 34 and route requests to `CaptureMode.ASK_EVERY_TIME`.
-- `ConsentExplanationScreen` is presented once to inform the user why the prompt appears on each trigger, followed by the native system screen-capture dialog.
+- `CapturePermissionCoordinator` recognizes API ≥ 34 and always routes directly to the native system screen-capture dialog.
+- No app-owned setup or explanation screen appears before Android's consent UI.
 
-## Preference Schema Migration (Schema Version 2)
+## Preference Schema Migration (Schema Version 3)
 
-`CapturePreferenceStore` implements an automatic migration when upgrading from older schemas:
-- Obsolete keys (`projection_result_code`, `projection_result_data`, `capture_armed`) are purged.
-- Any legacy `FAST_ACCESSIBILITY` mode setting is migrated automatically:
-  - On API < 34: Migrated to `CaptureMode.REMEMBER_CONSENT`.
-  - On API ≥ 34: Migrated to `CaptureMode.ASK_EVERY_TIME`.
-- Schema is bumped to version 2 (`KEY_CAPTURE_PERMISSION_SCHEMA = 2`).
+`CapturePreferenceMigration` runs at application startup when upgrading from older schemas:
+- Obsolete keys (`capture_mode`, `legacy_capture_explainer_seen`, `projection_result_code`, `projection_result_data`, and `capture_armed`) are purged.
+- Unrelated application settings are preserved.
+- The private capture-permission schema is bumped to version 3.
 
 ## Verification & Compatibility
 
 - **Zero Accessibility Footprint**: Verified that neither `MiCTS` nor `VISTrigger` manifests or source sets contain accessibility services, permissions (`BIND_ACCESSIBILITY_SERVICE`), or resource descriptors. Only `VISTrigger` contains LSPosed/Xposed metadata and hooks.
 - **Unit & Instrumented Tests**:
-  - `CapturePreferenceStoreTest`: Validates initial defaults, schema migration (mapping legacy modes on API 33 vs API 34), and cleanup of deprecated keys.
+  - `CapturePreferenceMigrationTest`: Validates schema migration and cleanup of deprecated keys without affecting unrelated settings.
   - `CapturePermissionCoordinatorTest`: Validates permission actions for API 28–37, in-memory consent reuse, and single-use enforcement on Android 14+.
-  - `FallbackUiTest`: Validates Compose UI flows for `CaptureSetupScreen` and `ConsentExplanationScreen`.
+  - `FallbackUiTest`: Validates the remaining denial/retry and fallback UI flows.

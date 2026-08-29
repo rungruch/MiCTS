@@ -15,25 +15,18 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -49,10 +42,8 @@ import com.parallelc.micts.config.AppConfig.KEY_ASYNC_TRIGGER
 import com.parallelc.micts.config.AppConfig.KEY_DEFAULT_DELAY
 import com.parallelc.micts.config.AppConfig.KEY_TILE_DELAY
 import com.parallelc.micts.config.AppConfig.KEY_VIBRATE
-import com.parallelc.micts.data.CapturePreferenceStore
 import com.parallelc.micts.data.ProjectionConsentStore
 import com.parallelc.micts.data.TriggerPreferenceStore
-import com.parallelc.micts.domain.CaptureMode
 import com.parallelc.micts.domain.CaptureFailureReason
 import com.parallelc.micts.domain.CapturePermissionAction
 import com.parallelc.micts.domain.CapturePermissionCoordinator
@@ -83,7 +74,6 @@ class MainActivity : ComponentActivity() {
     private val capturePermissionCoordinator = CapturePermissionCoordinator()
     private val nativeGateway = AndroidNativeTriggerGateway()
     private lateinit var triggerPreferences: TriggerPreferenceStore
-    private lateinit var capturePreferences: CapturePreferenceStore
     private var captureRequestInFlight = false
     private var captureServiceStarted = false
 
@@ -99,9 +89,7 @@ class MainActivity : ComponentActivity() {
 
         // Android 13 and below allow reusing this approval for later one-shot
         // captures. Android 14+ tokens are single-use; nothing is stored.
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
-            capturePreferences.mode == CaptureMode.REMEMBER_CONSENT
-        ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ProjectionConsentStore.save(result.resultCode, resultData)
         }
         startCaptureService(
@@ -120,7 +108,6 @@ class MainActivity : ComponentActivity() {
             window.isNavigationBarContrastEnforced = false
         }
         triggerPreferences = TriggerPreferenceStore(this)
-        capturePreferences = CapturePreferenceStore(this)
         captureRequestInFlight = savedInstanceState?.getBoolean(
             STATE_CAPTURE_REQUEST_IN_FLIGHT,
             false,
@@ -250,13 +237,9 @@ class MainActivity : ComponentActivity() {
         when (
             capturePermissionCoordinator.nextAction(
                 apiLevel = Build.VERSION.SDK_INT,
-                mode = capturePreferences.mode,
                 consentStored = ProjectionConsentStore.load() != null,
-                explanationSeen = capturePreferences.consentExplanationSeen,
             )
         ) {
-            CapturePermissionAction.ShowCaptureSetup -> showCaptureSetup()
-            CapturePermissionAction.ShowConsentExplanation -> showConsentExplanation()
             CapturePermissionAction.CaptureWithStoredConsent -> captureWithStoredConsent()
             CapturePermissionAction.RequestMediaProjection -> requestMediaProjection()
         }
@@ -273,39 +256,6 @@ class MainActivity : ComponentActivity() {
         }
         captureRequestInFlight = true
         projectionPermissionLauncher.launch(permissionIntent)
-    }
-
-    private fun showCaptureSetup() {
-        setContent {
-            MiCTSTheme {
-                CaptureSetupScreen(
-                    onApproveOnce = {
-                        capturePreferences.mode = CaptureMode.REMEMBER_CONSENT
-                        requestMediaProjection()
-                    },
-                    onAskEveryTime = {
-                        capturePreferences.mode = CaptureMode.ASK_EVERY_TIME
-                        requestMediaProjection()
-                    },
-                    onCancel = ::finish,
-                )
-            }
-        }
-    }
-
-    private fun showConsentExplanation() {
-        setContent {
-            MiCTSTheme {
-                ConsentExplanationScreen(
-                    onContinue = {
-                        capturePreferences.consentExplanationSeen = true
-                        capturePreferences.mode = CaptureMode.ASK_EVERY_TIME
-                        requestMediaProjection()
-                    },
-                    onCancel = ::finish,
-                )
-            }
-        }
     }
 
     private fun captureWithStoredConsent() {
@@ -354,101 +304,6 @@ class MainActivity : ComponentActivity() {
         // before the capture service records a frame.
         window.attributes = window.attributes.apply { alpha = 0f }
         delay(150L)
-    }
-}
-
-@Composable
-internal fun CaptureSetupScreen(
-    onApproveOnce: () -> Unit,
-    onAskEveryTime: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    CapturePermissionScreen(
-        title = stringResource(R.string.capture_setup_title),
-        message = stringResource(R.string.capture_setup_message),
-        disclosure = stringResource(R.string.capture_setup_privacy_disclosure),
-        primaryLabel = stringResource(R.string.approve_once),
-        onPrimary = onApproveOnce,
-        secondaryLabel = stringResource(R.string.ask_every_time_instead),
-        onSecondary = onAskEveryTime,
-        onCancel = onCancel,
-    )
-}
-
-@Composable
-internal fun ConsentExplanationScreen(
-    onContinue: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    CapturePermissionScreen(
-        title = stringResource(R.string.consent_explanation_title),
-        message = stringResource(R.string.consent_explanation_message),
-        disclosure = stringResource(R.string.ask_every_time_privacy_disclosure),
-        primaryLabel = stringResource(R.string.continue_label),
-        onPrimary = onContinue,
-        onCancel = onCancel,
-    )
-}
-
-@Composable
-private fun CapturePermissionScreen(
-    title: String,
-    message: String,
-    disclosure: String,
-    primaryLabel: String,
-    onPrimary: () -> Unit,
-    secondaryLabel: String? = null,
-    onSecondary: (() -> Unit)? = null,
-    onCancel: () -> Unit,
-) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Card(modifier = Modifier.fillMaxWidth().widthIn(max = 560.dp)) {
-                Column(
-                    modifier = Modifier
-                        .verticalScroll(rememberScrollState())
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text(text = title, style = MaterialTheme.typography.headlineSmall)
-                    Text(text = message, style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        text = disclosure,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Button(
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        onClick = onPrimary,
-                    ) {
-                        Text(primaryLabel)
-                    }
-                    if (secondaryLabel != null && onSecondary != null) {
-                        OutlinedButton(
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                            onClick = onSecondary,
-                        ) {
-                            Text(secondaryLabel)
-                        }
-                    }
-                    TextButton(
-                        modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp),
-                        onClick = onCancel,
-                    ) {
-                        Text(stringResource(R.string.cancel))
-                    }
-                }
-            }
-        }
     }
 }
 

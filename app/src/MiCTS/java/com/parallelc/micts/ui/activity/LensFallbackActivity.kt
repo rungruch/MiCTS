@@ -162,7 +162,7 @@ private fun LensLoadingScreen(onCancel: () -> Unit) {
             ) {
                 CircularProgressIndicator()
                 Text(stringResource(R.string.opening_lens))
-                TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+                TextButton(onClick = onCancel) { Text(stringResource(android.R.string.cancel)) }
             }
         }
     }
@@ -193,7 +193,7 @@ private fun LensCaptureProblem(
             Button(onClick = onRetake, modifier = Modifier.fillMaxWidth().padding(top = 24.dp)) {
                 Text(stringResource(R.string.retake))
             }
-            TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+            TextButton(onClick = onCancel) { Text(stringResource(android.R.string.cancel)) }
         }
     }
 }
@@ -212,7 +212,9 @@ internal fun LensUnavailableDialog(
                 Text(stringResource(R.string.open_google_app_store))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+        },
     )
 }
 

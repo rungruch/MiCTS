@@ -17,7 +17,6 @@ import com.parallelc.micts.config.TriggerService
 import com.parallelc.micts.config.XposedConfig
 import com.parallelc.micts.data.AiGatewayFactory
 import com.parallelc.micts.data.AiKeyStorageFactory
-import com.parallelc.micts.data.CapturePreferenceStore
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedService.OnScopeEventListener
 import io.github.libxposed.service.XposedService.ServiceException
@@ -63,8 +62,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val aiKeyStorage = AiKeyStorageFactory.create(application)
 
     init {
-        // Run the one-time capture-permission migration before exposing preferences to Compose.
-        CapturePreferenceStore(application)
         appConfigPref = application.getSharedPreferences(AppConfig.CONFIG_NAME, MODE_PRIVATE)
         val legacyKey = appConfigPref.getString(AppConfig.KEY_AI_API_KEY, null)
         if (!legacyKey.isNullOrEmpty()) {

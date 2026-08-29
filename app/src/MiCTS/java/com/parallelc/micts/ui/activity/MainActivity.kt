@@ -13,14 +13,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -43,11 +41,9 @@ import com.parallelc.micts.config.AppConfig.KEY_ASYNC_TRIGGER
 import com.parallelc.micts.config.AppConfig.KEY_DEFAULT_DELAY
 import com.parallelc.micts.config.AppConfig.KEY_TILE_DELAY
 import com.parallelc.micts.config.AppConfig.KEY_VIBRATE
-import com.parallelc.micts.data.CapturePreferenceStore
 import com.parallelc.micts.data.ProjectionConsentStore
 import com.parallelc.micts.data.TriggerPreferenceStore
 import com.parallelc.micts.domain.CaptureFailureReason
-import com.parallelc.micts.domain.CaptureMode
 import com.parallelc.micts.domain.CapturePermissionAction
 import com.parallelc.micts.domain.CapturePermissionCoordinator
 import com.parallelc.micts.domain.NativeTriggerResult
@@ -77,7 +73,6 @@ class MainActivity : ComponentActivity() {
     private val capturePermissionCoordinator = CapturePermissionCoordinator()
     private val nativeGateway = AndroidNativeTriggerGateway()
     private lateinit var triggerPreferences: TriggerPreferenceStore
-    private lateinit var capturePreferences: CapturePreferenceStore
     private var captureRequestInFlight = false
     private var captureServiceStarted = false
 
@@ -91,9 +86,7 @@ class MainActivity : ComponentActivity() {
             return@registerForActivityResult
         }
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
-            capturePreferences.mode == CaptureMode.REMEMBER_CONSENT
-        ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ProjectionConsentStore.save(result.resultCode, resultData)
         }
         startCaptureService(
@@ -112,7 +105,6 @@ class MainActivity : ComponentActivity() {
             window.isNavigationBarContrastEnforced = false
         }
         triggerPreferences = TriggerPreferenceStore(this)
-        capturePreferences = CapturePreferenceStore(this)
         captureRequestInFlight = savedInstanceState?.getBoolean(
             STATE_CAPTURE_REQUEST_IN_FLIGHT,
             false,
@@ -230,13 +222,9 @@ class MainActivity : ComponentActivity() {
         when (
             capturePermissionCoordinator.nextAction(
                 apiLevel = Build.VERSION.SDK_INT,
-                mode = capturePreferences.mode,
                 consentStored = ProjectionConsentStore.load() != null,
-                explanationSeen = capturePreferences.consentExplanationSeen,
             )
         ) {
-            CapturePermissionAction.ShowCaptureSetup -> showCaptureSetup()
-            CapturePermissionAction.ShowConsentExplanation -> showConsentExplanation()
             CapturePermissionAction.CaptureWithStoredConsent -> captureWithStoredConsent()
             CapturePermissionAction.RequestMediaProjection -> requestMediaProjection()
         }
@@ -253,39 +241,6 @@ class MainActivity : ComponentActivity() {
         }
         captureRequestInFlight = true
         projectionPermissionLauncher.launch(permissionIntent)
-    }
-
-    private fun showCaptureSetup() {
-        setContent {
-            MiCTSTheme {
-                CaptureSetupScreen(
-                    onApproveOnce = {
-                        capturePreferences.mode = CaptureMode.REMEMBER_CONSENT
-                        requestMediaProjection()
-                    },
-                    onAskEveryTime = {
-                        capturePreferences.mode = CaptureMode.ASK_EVERY_TIME
-                        requestMediaProjection()
-                    },
-                    onCancel = ::finish,
-                )
-            }
-        }
-    }
-
-    private fun showConsentExplanation() {
-        setContent {
-            MiCTSTheme {
-                ConsentExplanationScreen(
-                    onContinue = {
-                        capturePreferences.consentExplanationSeen = true
-                        capturePreferences.mode = CaptureMode.ASK_EVERY_TIME
-                        requestMediaProjection()
-                    },
-                    onCancel = ::finish,
-                )
-            }
-        }
     }
 
     private fun captureWithStoredConsent() {
@@ -336,82 +291,6 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-internal fun CaptureSetupScreen(
-    onApproveOnce: () -> Unit,
-    onAskEveryTime: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    CapturePermissionScreen(
-        title = stringResource(R.string.capture_setup_title),
-        message = stringResource(R.string.capture_setup_message),
-        disclosure = stringResource(R.string.capture_setup_privacy_disclosure),
-        primaryLabel = stringResource(R.string.approve_once),
-        onPrimary = onApproveOnce,
-        secondaryLabel = stringResource(R.string.ask_every_time_instead),
-        onSecondary = onAskEveryTime,
-        onCancel = onCancel,
-    )
-}
-
-@Composable
-internal fun ConsentExplanationScreen(
-    onContinue: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    CapturePermissionScreen(
-        title = stringResource(R.string.consent_explanation_title),
-        message = stringResource(R.string.consent_explanation_message),
-        disclosure = stringResource(R.string.ask_every_time_privacy_disclosure),
-        primaryLabel = stringResource(R.string.continue_label),
-        onPrimary = onContinue,
-        onCancel = onCancel,
-    )
-}
-
-@Composable
-private fun CapturePermissionScreen(
-    title: String,
-    message: String,
-    disclosure: String,
-    primaryLabel: String,
-    onPrimary: () -> Unit,
-    secondaryLabel: String? = null,
-    onSecondary: (() -> Unit)? = null,
-    onCancel: () -> Unit,
-) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(
-                modifier = Modifier.fillMaxWidth().widthIn(max = 560.dp).padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                Text(title, style = MaterialTheme.typography.headlineSmall)
-                Text(message, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    disclosure,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Button(onClick = onPrimary, modifier = Modifier.fillMaxWidth()) {
-                    Text(primaryLabel)
-                }
-                if (secondaryLabel != null && onSecondary != null) {
-                    OutlinedButton(onClick = onSecondary, modifier = Modifier.fillMaxWidth()) {
-                        Text(secondaryLabel)
-                    }
-                }
-                TextButton(onClick = onCancel, modifier = Modifier.align(Alignment.End)) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        }
-    }
-}
-
-@Composable
 internal fun CaptureProblem(
     title: String,
     message: String,
@@ -433,7 +312,7 @@ internal fun CaptureProblem(
             Button(onClick = onRetake, modifier = Modifier.fillMaxWidth().padding(top = 24.dp)) {
                 Text(stringResource(R.string.retake))
             }
-            TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+            TextButton(onClick = onCancel) { Text(stringResource(android.R.string.cancel)) }
         }
     }
 }

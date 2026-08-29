@@ -29,9 +29,6 @@ object AppConfig {
     const val KEY_TRIGGER_STRATEGY = "trigger_strategy"
     const val KEY_AUTO_RESOLUTION = "auto_resolution"
     const val KEY_LOCAL_TEXT_RECOGNITION = "local_text_recognition"
-    const val KEY_CAPTURE_MODE = "capture_mode"
-    const val KEY_CAPTURE_EXPLANATION_SEEN = "legacy_capture_explainer_seen"
-    const val KEY_CAPTURE_PERMISSION_SCHEMA = "capture_permission_schema"
     const val KEY_AI_ENABLED = "ai_enabled"
     const val KEY_AI_BASE_URL = "ai_base_url"
     const val KEY_AI_API_KEY = "ai_api_key"
@@ -51,9 +48,6 @@ object AppConfig {
         KEY_TRIGGER_STRATEGY to "AUTO",
         KEY_AUTO_RESOLUTION to "UNKNOWN",
         KEY_LOCAL_TEXT_RECOGNITION to true,
-        KEY_CAPTURE_MODE to "UNSET",
-        KEY_CAPTURE_EXPLANATION_SEEN to false,
-        KEY_CAPTURE_PERMISSION_SCHEMA to 2,
         KEY_AI_ENABLED to false,
         KEY_AI_BASE_URL to DEFAULT_AI_BASE_URL,
         KEY_AI_API_KEY to "",

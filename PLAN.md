@@ -70,5 +70,5 @@ Standard AGP signing replaces the former `apksign` plugin. Provide `androidStore
 - The MiCTS JPEG and VISTrigger PNG encoding tests pass on the Pixel Android 17 preview emulator.
 - The MiCTS JPEG encoding, decode, MIME, and legacy-cleanup tests also pass on the physical Huawei SGT-LX9 (Android 12/API 31), and the release build completes a real JPEG handoff to Google Lens.
 - The flavor-specific test directories use Gradle's `androidTest<Flavor>`/`test<Flavor>` convention, so both flavor test suites execute rather than silently producing zero-test reports.
-- MiCTS now has Compose coverage for native confirmation, permission denial, setup choices, Android 14 consent explanation, protected-content messaging, and Lens-unavailable fallback. VISTrigger retains its crop/editor coverage.
+- MiCTS has Compose coverage for native confirmation, permission denial, protected-content messaging, and Lens-unavailable fallback. VISTrigger retains its crop/editor coverage.
 - The manual emulator workflow runs connected tests at API 28, 33, 34, or 37; real-device Android 17 and libxposed 101/102 validation remains required before documenting Android 17 support.

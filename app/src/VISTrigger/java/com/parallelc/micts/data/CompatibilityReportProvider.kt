@@ -36,7 +36,6 @@ class CompatibilityReportProvider(private val context: Context) {
         val contextualIntent = Intent(CONTEXTUAL_SEARCH_ACTION).setPackage(
             LensShareGateway.GOOGLE_APP_PACKAGE,
         )
-        val captureMode = CapturePreferenceStore(context).mode
         val consentReuseSupported = Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE
 
         return CompatibilityReport(
@@ -61,7 +60,6 @@ class CompatibilityReportProvider(private val context: Context) {
             }.getOrDefault(false),
             lensShareAvailable = LensShareGateway(context).canShareToGoogle(),
             selectedTriggerService = selectedTriggerService,
-            captureMode = captureMode,
             consentReuseSupported = consentReuseSupported,
             consentStored = consentReuseSupported && ProjectionConsentStore.load() != null,
         )

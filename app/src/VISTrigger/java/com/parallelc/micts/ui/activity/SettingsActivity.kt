@@ -80,7 +80,6 @@ import com.parallelc.micts.config.TriggerService
 import com.parallelc.micts.config.XposedConfig
 import com.parallelc.micts.data.CompatibilityReportProvider
 import com.parallelc.micts.domain.AutoResolution
-import com.parallelc.micts.domain.CaptureMode
 import com.parallelc.micts.domain.CompatibilityReport
 import com.parallelc.micts.domain.TriggerStrategy
 import com.parallelc.micts.ui.theme.MiCTSTheme
@@ -281,7 +280,6 @@ fun SettingsPage(
 
         if (BuildConfig.APP_NAME == "MiCTS") {
             TriggerStrategySettings(appConfig, viewModel)
-            CaptureMethodSettings(appConfig, viewModel)
             ListItem(
                 headlineContent = { Text(stringResource(R.string.local_text_recognition)) },
                 supportingContent = {
@@ -435,69 +433,6 @@ fun SettingsPage(
 }
 
 @Composable
-private fun CaptureMethodSettings(
-    appConfig: Map<String, Any>,
-    viewModel: SettingsViewModel,
-) {
-    val mode = CaptureMode.entries.firstOrNull {
-        it.name == appConfig[AppConfig.KEY_CAPTURE_MODE] as? String
-    } ?: CaptureMode.UNSET
-    val consentReusable = Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-    var expanded by remember { mutableStateOf(false) }
-
-    ListItem(
-        headlineContent = { Text(stringResource(R.string.capture_method)) },
-        supportingContent = {
-            Text(
-                if (consentReusable) {
-                    stringResource(R.string.capture_method_summary)
-                } else {
-                    stringResource(R.string.capture_method_modern_summary)
-                },
-            )
-        },
-        trailingContent = {
-            if (consentReusable) {
-                Box {
-                    TextButton(onClick = { expanded = true }) {
-                        Text(captureModeLabel(mode))
-                    }
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                    ) {
-                        listOf(
-                            CaptureMode.REMEMBER_CONSENT,
-                            CaptureMode.ASK_EVERY_TIME,
-                        ).forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(captureModeLabel(option)) },
-                                onClick = {
-                                    expanded = false
-                                    viewModel.updateAppConfig(
-                                        AppConfig.KEY_CAPTURE_MODE,
-                                        option.name,
-                                    )
-                                },
-                            )
-                        }
-                    }
-                }
-            } else {
-                Text(stringResource(R.string.capture_mode_ask))
-            }
-        },
-    )
-}
-
-@Composable
-private fun captureModeLabel(mode: CaptureMode): String = when (mode) {
-    CaptureMode.UNSET -> stringResource(R.string.capture_mode_unset)
-    CaptureMode.REMEMBER_CONSENT -> stringResource(R.string.capture_mode_remember)
-    CaptureMode.ASK_EVERY_TIME -> stringResource(R.string.capture_mode_ask)
-}
-
-@Composable
 private fun TriggerStrategySettings(
     appConfig: Map<String, Any>,
     viewModel: SettingsViewModel,
@@ -628,7 +563,6 @@ private fun compatibilityLines(report: CompatibilityReport): List<String> {
         "${stringResource(R.string.compatibility_cts_service)}: ${status(report.contextualSearchServiceAvailable)}",
         "${stringResource(R.string.compatibility_lens_share)}: ${status(report.lensShareAvailable)}",
         "${stringResource(R.string.compatibility_trigger_service)}: ${report.selectedTriggerService}",
-        "${stringResource(R.string.compatibility_capture_method)}: ${captureModeLabel(report.captureMode)}",
         "${stringResource(R.string.compatibility_consent_reuse)}: ${status(report.consentReuseSupported)}",
         "${stringResource(R.string.compatibility_consent_stored)}: ${status(report.consentStored)}",
     )

@@ -43,15 +43,15 @@ The Lens path is a fallback, not native Circle to Search. At most one temporary 
 
 ### Capture permission and privacy
 
-| Android version | Approve once (Remember consent) | Ask every time |
-| --- | --- | --- |
-| Android 9–13 (API 28–33) | Recommended; approve Android's screen-capture prompt once per app process to capture silently without repeated dialogs | Optional; prompt for fresh MediaProjection consent before every trigger |
-| Android 14+ (API 34+) | Automatically degrades to Ask every time; tokens are single-use by platform design | Required for each fallback trigger |
+| Android version | Consent behavior |
+| --- | --- |
+| Android 9–13 (API 28–33) | Approve Android's screen-capture prompt once per app process; later captures reuse that in-memory approval automatically |
+| Android 14+ (API 34+) | Approve Android's screen-capture prompt before every fallback trigger because tokens are single-use |
 
 Unlike accessibility-based capture tools, MiCTS uses **zero accessibility services**, ensuring complete compatibility with banking and security-conscious applications that restrict accessibility tools.
 
-- **Approve once (Android 9–13)**: Prompts for Android's standard MediaProjection screen-capture permission once and keeps the consent token only while the app process is alive. Each trigger starts a fresh, one-shot foreground service that captures a single frame and immediately stops and releases all resources—avoiding background battery drain and avoiding the need for an accessibility service or persistent "armed" service. After process death, a reboot, or platform token invalidation, MiCTS prompts again.
-- **Ask every time (Android 14+ and optional for older versions)**: Android 14 and newer enforce single-use tokens by platform design (`SecurityException` on reuse). On Android 14+, MiCTS explains this once and requests fresh consent for each capture.
+- **Android 9–13**: MiCTS keeps the successful MediaProjection consent token only while the app process is alive. Each trigger starts a fresh, one-shot foreground service that captures a single frame and immediately stops and releases all resources—avoiding background battery drain and avoiding the need for an accessibility service or persistent "armed" service. After process death, a reboot, or platform token invalidation, MiCTS prompts again.
+- **Android 14+**: Android enforces single-use tokens by platform design (`SecurityException` on reuse), so MiCTS opens the system consent dialog for every capture.
    
 
 ## Settings
@@ -64,7 +64,6 @@ Unlike accessibility-based capture tools, MiCTS uses **zero accessibility servic
 - Default trigger delay: The delay when triggering by launching MiCTS
 - Tile trigger delay: The delay when triggering by the Quick Settings panel tile
 - Trigger strategy: Choose Auto, native Circle to Search only, or Google Lens fallback
-- Capture method: On Android 9–13, choose between "Approve once" (reuses consent while MiCTS remains running) and "Ask every time". On Android 14+, Android requires asking before every capture.
 - Reset Auto detection: Ask again whether the native trigger works
 
 ## FAQ

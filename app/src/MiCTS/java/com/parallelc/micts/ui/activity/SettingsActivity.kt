@@ -1,7 +1,6 @@
 package com.parallelc.micts.ui.activity
 
 import android.content.res.Configuration
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -49,8 +48,6 @@ import com.parallelc.micts.MainApplication
 import com.parallelc.micts.R
 import com.parallelc.micts.config.AppConfig
 import com.parallelc.micts.config.Language
-import com.parallelc.micts.data.CapturePreferenceStore
-import com.parallelc.micts.domain.CaptureMode
 import com.parallelc.micts.domain.AutoResolution
 import com.parallelc.micts.domain.TriggerStrategy
 import com.parallelc.micts.ui.theme.MiCTSTheme
@@ -82,11 +79,7 @@ private fun LeanSettingsScreen(viewModel: SettingsViewModel) {
     val appConfig by viewModel.appConfig.collectAsState()
     var menuExpanded by remember { viewModel.menuExpanded }
     var languageExpanded by remember { viewModel.languageExpanded }
-    val context = LocalContext.current
-    val capturePreferences = remember(context) { CapturePreferenceStore(context) }
-    var captureMode by remember { mutableStateOf(capturePreferences.mode) }
     var strategyMenuExpanded by remember { mutableStateOf(false) }
-    var captureMenuExpanded by remember { mutableStateOf(false) }
     val strategy = TriggerStrategy.fromStoredName(
         appConfig[AppConfig.KEY_TRIGGER_STRATEGY] as? String,
     )
@@ -226,47 +219,6 @@ private fun LeanSettingsScreen(viewModel: SettingsViewModel) {
                 }
             }
 
-            SectionLabel(stringResource(R.string.capture_method))
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.capture_mode_ask)) },
-                    supportingContent = {
-                        Text(stringResource(R.string.capture_method_modern_summary))
-                    },
-                )
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(captureModeLabel(captureMode))
-                        Text(
-                            stringResource(R.string.capture_method_summary),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Button(onClick = { captureMenuExpanded = true }) {
-                        Text(stringResource(R.string.change))
-                    }
-                    DropdownMenu(
-                        expanded = captureMenuExpanded,
-                        onDismissRequest = { captureMenuExpanded = false },
-                    ) {
-                        listOf(CaptureMode.REMEMBER_CONSENT, CaptureMode.ASK_EVERY_TIME).forEach { mode ->
-                            DropdownMenuItem(
-                                text = { Text(captureModeLabel(mode)) },
-                                onClick = {
-                                    capturePreferences.mode = mode
-                                    captureMode = mode
-                                    captureMenuExpanded = false
-                                },
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -305,11 +257,4 @@ private fun triggerStrategyLabel(strategy: TriggerStrategy): String = when (stra
     TriggerStrategy.AUTO -> stringResource(R.string.trigger_strategy_auto)
     TriggerStrategy.NATIVE_ONLY -> stringResource(R.string.trigger_strategy_native)
     else -> stringResource(R.string.trigger_strategy_lens)
-}
-
-@Composable
-private fun captureModeLabel(mode: CaptureMode): String = when (mode) {
-    CaptureMode.UNSET -> stringResource(R.string.capture_mode_unset)
-    CaptureMode.REMEMBER_CONSENT -> stringResource(R.string.capture_mode_remember)
-    CaptureMode.ASK_EVERY_TIME -> stringResource(R.string.capture_mode_ask)
 }

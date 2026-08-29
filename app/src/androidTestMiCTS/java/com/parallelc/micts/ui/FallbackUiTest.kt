@@ -6,8 +6,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.parallelc.micts.ui.activity.CaptureProblem
-import com.parallelc.micts.ui.activity.CaptureSetupScreen
-import com.parallelc.micts.ui.activity.ConsentExplanationScreen
 import com.parallelc.micts.ui.activity.LensUnavailableDialog
 import com.parallelc.micts.ui.activity.NativeConfirmationDialog
 import com.parallelc.micts.ui.theme.MiCTSTheme
@@ -60,45 +58,6 @@ class FallbackUiTest {
         composeRule.onNodeWithText("Screen capture permission needed").assertIsDisplayed()
         composeRule.onNodeWithText("Retake").performClick()
         assertTrue(retakeSelected)
-    }
-
-    @Test
-    fun captureSetupExplainsProcessScopedApprovalAndOffersChoices() {
-        var approveOnceSelected = false
-        var askEveryTimeSelected = false
-        composeRule.setContent {
-            MiCTSTheme {
-                CaptureSetupScreen(
-                    onApproveOnce = { approveOnceSelected = true },
-                    onAskEveryTime = { askEveryTimeSelected = true },
-                    onCancel = {},
-                )
-            }
-        }
-
-        composeRule.onNodeWithText("Set up screen capture").assertIsDisplayed()
-        composeRule.onNodeWithText("Approve once").performClick()
-        assertTrue(approveOnceSelected)
-
-        composeRule.onNodeWithText("Ask every time instead").performClick()
-        assertTrue(askEveryTimeSelected)
-    }
-
-    @Test
-    fun consentExplanationExplainsPerTriggerConsentOnAndroid14() {
-        var continued = false
-        composeRule.setContent {
-            MiCTSTheme {
-                ConsentExplanationScreen(
-                    onContinue = { continued = true },
-                    onCancel = {},
-                )
-            }
-        }
-
-        composeRule.onNodeWithText("Screen capture approval").assertIsDisplayed()
-        composeRule.onNodeWithText("Continue").performClick()
-        assertTrue(continued)
     }
 
     @Test

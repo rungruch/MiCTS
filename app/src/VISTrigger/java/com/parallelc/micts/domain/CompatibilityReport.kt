@@ -14,7 +14,6 @@ data class CompatibilityReport(
     val contextualSearchServiceAvailable: Boolean,
     val lensShareAvailable: Boolean,
     val selectedTriggerService: String,
-    val captureMode: CaptureMode,
     val consentReuseSupported: Boolean,
     val consentStored: Boolean,
 )
