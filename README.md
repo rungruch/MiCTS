@@ -1,108 +1,179 @@
 # MiCTS
 
-[![Stars](https://img.shields.io/github/stars/parallelcc/MiCTS)](https://github.com/parallelcc/MiCTS) [![Downloads](https://img.shields.io/github/downloads/parallelcc/MiCTS/total)](https://github.com/parallelcc/MiCTS/releases) [![Release](https://img.shields.io/github/v/release/parallelcc/MiCTS)](https://github.com/parallelcc/MiCTS/releases/latest) [![DeepWiki](https://img.shields.io/badge/DeepWiki-parallelcc%2FMiCTS-blue.svg?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAyCAYAAAAnWDnqAAAAAXNSR0IArs4c6QAAA05JREFUaEPtmUtyEzEQhtWTQyQLHNak2AB7ZnyXZMEjXMGeK/AIi+QuHrMnbChYY7MIh8g01fJoopFb0uhhEqqcbWTp06/uv1saEDv4O3n3dV60RfP947Mm9/SQc0ICFQgzfc4CYZoTPAswgSJCCUJUnAAoRHOAUOcATwbmVLWdGoH//PB8mnKqScAhsD0kYP3j/Yt5LPQe2KvcXmGvRHcDnpxfL2zOYJ1mFwrryWTz0advv1Ut4CJgf5uhDuDj5eUcAUoahrdY/56ebRWeraTjMt/00Sh3UDtjgHtQNHwcRGOC98BJEAEymycmYcWwOprTgcB6VZ5JK5TAJ+fXGLBm3FDAmn6oPPjR4rKCAoJCal2eAiQp2x0vxTPB3ALO2CRkwmDy5WohzBDwSEFKRwPbknEggCPB/imwrycgxX2NzoMCHhPkDwqYMr9tRcP5qNrMZHkVnOjRMWwLCcr8ohBVb1OMjxLwGCvjTikrsBOiA6fNyCrm8V1rP93iVPpwaE+gO0SsWmPiXB+jikdf6SizrT5qKasx5j8ABbHpFTx+vFXp9EnYQmLx02h1QTTrl6eDqxLnGjporxl3NL3agEvXdT0WmEost648sQOYAeJS9Q7bfUVoMGnjo4AZdUMQku50McDcMWcBPvr0SzbTAFDfvJqwLzgxwATnCgnp4wDl6Aa+Ax283gghmj+vj7feE2KBBRMW3FzOpLOADl0Isb5587h/U4gGvkt5v60Z1VLG8BhYjbzRwyQZemwAd6cCR5/XFWLYZRIMpX39AR0tjaGGiGzLVyhse5C9RKC6ai42ppWPKiBagOvaYk8lO7DajerabOZP46Lby5wKjw1HCRx7p9sVMOWGzb/vA1hwiWc6jm3MvQDTogQkiqIhJV0nBQBTU+3okKCFDy9WwferkHjtxib7t3xIUQtHxnIwtx4mpg26/HfwVNVDb4oI9RHmx5WGelRVlrtiw43zboCLaxv46AZeB3IlTkwouebTr1y2NjSpHz68WNFjHvupy3q8TFn3Hos2IAk4Ju5dCo8B3wP7VPr/FGaKiG+T+v+TQqIrOqMTL1VdWV1DdmcbO8KXBz6esmYWYKPwDL5b5FA1a0hwapHiom0r/cKaoqr+27/XcrS5UwSMbQAAAABJRU5ErkJggg==)](https://deepwiki.com/parallelcc/MiCTS)
+[![Build, verify, and test](https://github.com/rungruch/MiCTS/actions/workflows/ci_build.yml/badge.svg)](https://github.com/rungruch/MiCTS/actions/workflows/ci_build.yml)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
+[![Android 9–16](https://img.shields.io/badge/Android-9–16-3DDC84?logo=android&logoColor=white)](#requirements)
 
-简体中文&nbsp;&nbsp;|&nbsp;&nbsp;[English](/README_en.md)&nbsp;&nbsp;|&nbsp;&nbsp;[Русский](/README_ru.md)&nbsp;&nbsp;|&nbsp;&nbsp;[Türkçe](/README_tr.md)&nbsp;&nbsp;|&nbsp;&nbsp;[فارسی](/README_fa.md)
+MiCTS is a small Android utility that tries to open native Circle to Search without root. When Google does not enable the native interface, the standalone app can capture one full-screen frame and hand it directly to Google Lens.
 
-在任意Android 9–16设备上触发圈定即搜（Circle to Search）功能
+> [!IMPORTANT]
+> This repository is an independently maintained personal derivative of [parallelcc/MiCTS](https://github.com/parallelcc/MiCTS). It is not an official upstream build, is not affiliated with Google, and is maintained for this personal project rather than for upstream pull requests.
 
-*本应用只负责触发圈定即搜，无法处理触发成功后可能出现的问题*
+## Highlights
 
-## 使用方法
+- Supports Android 9–16 (API 28–36) as the documented device range.
+- Offers Auto, native-only, and full-screen Google Lens fallback strategies.
+- Can be launched from the app icon, a Quick Settings tile, or an external automation that opens the app.
+- Uses Android's voice-interaction binder path for the standalone native trigger.
+- Uses a one-shot MediaProjection service for Lens fallback capture.
+- Declares no accessibility service.
+- Keeps root and LSPosed functionality in a separate `VISTrigger` flavor.
 
-1. 安装最新版[Google](https://play.google.com/store/apps/details?id=com.google.android.googlequicksearchbox)应用，开启自启动，关闭后台限制，将默认助理应用设置为Google
+The standalone MiCTS flavor deliberately does **not** include a crop editor, local OCR, an AI assistant, root hooks, device spoofing, or Xposed metadata. Native Circle to Search eligibility remains controlled by Google, the installed Google app, device configuration, region, account, and OEM software.
 
+## Builds
 
-2. 安装并打开MiCTS
-    - 如果幸运的话，在不需要root的情况下，打开MiCTS就会直接触发圈定即搜
-    - 如果没有反应，大概率是因为Google对你的设备禁用了圈定即搜功能（可以通过在Logcat日志中查找`Omni invocation failed: not enabled`确认），在有root的情况下，可以尝试以下方法：
-        - 在LSPosed里激活模块，在[MiCTS设置](#进入设置的方式)里开启`Google机型伪装`后，强制重启Google
-        - 如果还是不行，使用[GMS-Flags](https://github.com/polodarb/GMS-Flags)，将`com.google.android.apps.search.omnient.device`的flag`45631784`设为true
+| Flavor | Application ID | Purpose |
+| --- | --- | --- |
+| `MiCTS` | `com.parallelc.micts` | Standalone no-root native trigger with a direct, full-screen Lens fallback. |
+| `VISTrigger` | `com.parallelc.vistrigger` | Separate legacy LSPosed/Xposed module for users who still need root hooks. |
 
+Installing the standalone flavor over an older MiCTS module replaces that installation because the package name is unchanged. Install `VISTrigger` separately if you still need the legacy hooks.
 
-3. 设置触发方式
-    - 打开MiCTS即可触发，因此可以利用其他软件，比如悬浮球、Xposed Edge、ShortX等，将动作设置为打开MiCTS，实现自定义触发方式
-    - MiCTS提供了一个触发磁贴，可将其添加到快速设置面板里，通过点击磁贴触发
-    - 对于小米设备，MiCTS内置了长按小白条触发和长按Home键触发的功能，可以在MiCTS设置里开启（安装MiCTS后需要激活模块并重启手机才能使用）
-    - 对于Android版本>=13的三星设备，可以从[三星应用商店](https://galaxystore.samsung.com/detail/com.samsung.android.app.routineplus)或[Good Lock](https://galaxystore.samsung.com/detail/com.samsung.android.goodlock)里下载安装“日常程序+”，然后在“设置-模式和日常程序”里，创建日常程序通过按钮操作实现长按电源按钮等方式来启动MiCTS
+This personal repository currently does not publish release APKs. Build from source using [Building from source](#building-from-source).
 
-### Google Lens 后备模式
+## Requirements
 
-MiCTS 默认使用“自动：优先原生”模式。首次打开会尝试真正的圈定即搜；下次打开时，MiCTS 会询问原生界面是否成功出现：
+For standalone MiCTS:
 
-- 选择“是，继续使用原生”会继续触发真正的圈定即搜。
-- 如果 Google 对设备禁用了圈定即搜，选择“否，使用 Lens 后备模式”。Android 会在每次触发时请求截屏许可，然后 MiCTS 会打开智能屏幕搜索编辑器。
+- Android 9–16.
+- The latest available [Google app](https://play.google.com/store/apps/details?id=com.google.android.googlequicksearchbox).
+- Google configured as the default assistant for the native voice-interaction trigger.
+- Background and battery restrictions disabled for the Google app when the device vendor would otherwise delay or stop it.
 
-智能编辑器使用应用内置模型在本地识别拉丁字母和中文。你可以点选识别到的文字或绘制矩形区域、双指缩放，然后复制、搜索、翻译文字，或将选定区域发送到 Google Lens。右上角菜单也可以选择用 Lens 搜索整个屏幕。
+For the separate VISTrigger module, root and a compatible LSPosed installation are also required. Hook behavior depends on Android, the OEM framework, the Google app, launcher versions, and the installed LSPosed framework.
 
-Lens 模式不是原生圈定即搜。图片只保存在应用缓存中，最多保留一张临时截图，MiCTS 本身不会自动上传图片或识别到的文字。提供可选的“AI 助手”（默认关闭）；仅在用户明确配置并点击“问 AI”时，才会将选定区域和识别文字发送到用户配置的兼容 OpenAI 接口。只有在你明确点击搜索、翻译、Lens 或问 AI 后，相应内容才会发送到对应的外部应用或接口。
+Android 17/API 37 is used by the build toolchain, but Android 17 device support is not claimed until it has been validated on physical devices and current LSPosed frameworks.
 
-## 设置
+## Getting started
 
-### 进入设置的方式
-- 长按MiCTS应用图标，出现设置选项，点击进入
-- 从LSPosed模块页面，点击MiCTS，再点击设置图标进入
-- 长按快速设置面板的磁贴进入
+1. Install the MiCTS flavor and open it once.
+2. Keep **Auto: native first** selected unless you already know that you want native-only or Lens-only behavior.
+3. MiCTS tries the native request. On the next launch, it asks whether the native interface appeared.
+4. Choose **Yes, keep native** if Circle to Search worked, or **No, use Lens fallback** if it did not.
+5. Approve Android's screen-capture dialog when a Lens fallback needs it.
+6. Optionally add the MiCTS tile to Quick Settings or configure another automation to launch MiCTS.
 
-### 应用设置
-- 默认触发延迟：通过打开MiCTS触发的延迟
-- 磁贴触发延迟：通过点击快速设置面板的磁贴触发的延迟
-- 触发策略：选择自动、仅原生圈定即搜或 Google Lens 后备模式
-- 重置自动检测：再次询问原生触发是否正常工作
-- 本地文字识别：启用内置的离线拉丁字母和中文模型，为复制、搜索和翻译提供文字识别
-- 兼容性报告：显示 Google 应用、默认助理、Lens、Android 系统服务和触发服务状态，但不会声称能够读取 Google 的私有设备资格
+Open settings by long-pressing the app icon and choosing **Settings**, or by long-pressing the Quick Settings tile.
 
-### 模块设置
-需要在LSPosed里激活模块
+## Trigger strategies
 
-- 系统触发服务：触发所使用的系统服务，只会显示当前支持的选项，依赖作用域选择系统框架
-   - VIS：支持Android 9–16，需要将默认助理应用设置为Google，触发时一些设备的屏幕边缘会闪，没有激活模块的情况下只能使用此服务
-   - CSHelper：支持Android 14 QPR3及以上，不需要设置默认助理应用，触发时屏幕边缘不会闪
-   - CSService：支持Android 15及以上，圈定即搜专用的服务，效果同CSHelper
+| Strategy | Behavior |
+| --- | --- |
+| **Auto: native first** | Tries native Circle to Search. If Android rejects the request, MiCTS falls back immediately. If Android accepts the request, MiCTS asks on the next launch whether Google's interface actually appeared and remembers the answer. |
+| **Native Circle to Search only** | Requests native Circle to Search and exits. It never captures the screen as a fallback. |
+| **Google Lens fallback** | Skips the native request, captures one complete screen frame, and shares it directly with the Google app's Lens interface. |
 
+MiCTS cannot inspect Google's private Circle to Search eligibility or reliably detect whether Google's UI appeared. An accepted binder request is therefore treated as unverified until the user confirms the result.
 
-- 长按小白条触发：仅支持小米设备，依赖作用域选择系统桌面
+## Capture permission behavior
 
+The Lens fallback uses Android MediaProjection and a short-lived foreground service. It captures one frame, writes the temporary image, releases the virtual display and projection resources, and stops.
 
-- 长按Home键触发：仅支持小米设备，依赖作用域选择系统框架
+| Android version | Consent behavior |
+| --- | --- |
+| Android 9–13 (API 28–33) | A successful consent token can be reused for later one-shot captures while the MiCTS process and token remain valid. Process death, reboot, or platform/OEM invalidation requires approval again. |
+| Android 14–16 (API 34–36) | MediaProjection consent tokens are single-use, so Android shows the system approval dialog before every fallback capture. |
 
- 
-- Google机型伪装：依赖作用域选择Google
-   - 制造商：修改Google读取到的ro.product.manufacturer
-   - 品牌：修改Google读取到的ro.product.brand
-   - 型号：修改Google读取到的ro.product.model
-   - 设备：修改Google读取到的ro.product.device 
+MiCTS stores consent only in process memory; it does not serialize MediaProjection permission data to disk or keep a permanently armed capture service. Permission denial, expired consent, capture timeout, protected content, write failure, and unavailable Lens produce a retry or explanatory screen.
 
-## 常见问题
+## Standalone settings
 
-### 提示“触发失败！”
+- Default app-launch trigger delay.
+- Quick Settings tile trigger delay.
+- Vibration on a successful native request.
+- Synchronous or asynchronous trigger dispatch.
+- Auto, native-only, or Lens fallback strategy.
+- Resetting Auto's remembered result.
+- App interface language.
 
-大概率是没有将Google设为默认助理，检查一下
+## VISTrigger legacy module
 
-### 触发出来是Google助理，不是圈定即搜
+`VISTrigger` keeps the inherited LSPosed/Xposed entry point and legacy hooks isolated from the standalone APK. Its module scopes include the Android system framework, Xiaomi/POCO launchers, and the Google app. Depending on the device and Android version, the legacy settings expose VIS, contextual-search service helpers, Xiaomi gesture hooks, Home-button hooks, and Google-app device spoofing.
 
-Google不是最新版，更新一下
+Use only the scopes needed for the selected feature. Root hooks and spoofing can break after Android, OEM, Google app, launcher, or LSPosed updates, and this project cannot guarantee that Google will enable Circle to Search.
 
-### Gemini 或 Android Auto 正常，但圈定即搜不可用
+The VISTrigger source set also retains legacy crop/editor interfaces for compatibility. Its local-recognition gateway currently returns no recognized text and its AI gateway reports that AI is unsupported. Those paths are not advertised as maintained VISTrigger features.
 
-这些功能使用不同的 Google 服务和资格检查。如果 Logcat 出现 `Omni invocation failed: not enabled`，表示 Google 已收到原生请求，但对该设备禁用了圈定即搜。无 Root 时请使用 MiCTS 的 Google Lens 后备模式。
+## Privacy and security boundaries
 
-### 有时无法成功触发，手动打开Google后才会出现刚才圈定即搜的界面
+- Standalone MiCTS captures only after a user trigger and Android approval when required.
+- It keeps at most one temporary JPEG at `cache/lens_capture/capture.jpg`; a new capture removes the previous JPEG and legacy PNG.
+- MiCTS does not upload the image itself. A successful fallback grants the Google app temporary read access to the captured frame, after which Google's privacy and retention policies apply.
+- Cancel and retry flows remove the temporary capture. A successful Lens handoff may leave it in app-private cache until the next capture replaces it.
+- MiCTS declares no accessibility service, overlay permission, broad storage permission, or Internet permission.
+- Android secure-window protection can produce an empty or blocked capture that MiCTS cannot bypass.
+- Avoiding accessibility does not guarantee acceptance by every banking, enterprise, or security-sensitive app.
+- The VISTrigger flavor has additional root/Xposed trust boundaries because its configured hooks execute inside scoped processes.
 
-原因应该是墓碑机制导致的，看看手机有没有相关的设置可以把Google加到白名单里，比如电池优化选择无限制等，在模块设置里`系统触发服务`使用`CSHelper`应该没有这个问题
+## Troubleshooting
 
-## 贡献翻译
+### “Trigger failed!” appears
 
-你可以通过[Crowdin](https://crowdin.com/project/micts)贡献翻译
+Confirm that the Google app is installed, updated, allowed to run in the background, and configured as the default assistant. If you are using VISTrigger, also verify that LSPosed is active and the required scopes are selected.
 
-如果你需要贡献一个新的语言，请先提交一个issue
+### Google Assistant opens instead of Circle to Search
 
-## Star History
+The native request reached Google's assistant path, but Google did not expose Circle to Search for the current configuration. Update the Google app, then use the Lens fallback if native eligibility remains unavailable.
 
-<a href="https://star-history.com/#parallelcc/micts&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=parallelcc/micts&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=parallelcc/micts&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=parallelcc/micts&type=Date" />
- </picture>
-</a>
+### Logcat contains `Omni invocation failed: not enabled`
+
+Google received the native request but declined to enable its native interface. Standalone MiCTS cannot override that decision. Select the Lens fallback, or review VISTrigger's root-based options with an understanding of their risks.
+
+### Native UI appears only after opening the Google app manually
+
+Remove background and battery restrictions from the Google app. Vendor process management can make a cold Google app launch much slower.
+
+### Android asks for capture permission again
+
+This is expected on Android 14 and later. On Android 9–13, approval lasts only while Android keeps the in-memory token valid; process death, reboot, or OEM policy can invalidate it.
+
+### The captured image is blank
+
+The visible app may protect its window from screenshots. MiCTS cannot capture protected content.
+
+### Lens does not open
+
+Install or update the Google app and confirm that it can receive image shares. MiCTS keeps the failure screen available so you can retry or cancel.
+
+## Building from source
+
+Prerequisites:
+
+- JDK 17.
+- Android SDK with API 37 installed.
+- ADB if you want to install from the command line.
+
+Clone this personal repository and build both debug flavors:
+
+```bash
+git clone https://github.com/rungruch/MiCTS.git
+cd MiCTS
+./gradlew :app:assembleMiCTSDebug :app:assembleVISTriggerDebug --no-parallel
+```
+
+The APKs are written under:
+
+- `app/build/outputs/apk/MiCTS/debug/`
+- `app/build/outputs/apk/VISTrigger/debug/`
+
+Run the flavor unit tests and lint checks with:
+
+```bash
+./gradlew \
+  :app:testMiCTSDebugUnitTest \
+  :app:testVISTriggerDebugUnitTest \
+  :app:lintMiCTSDebug \
+  :app:lintVISTriggerDebug \
+  --no-parallel
+```
+
+Release builds use standard Android Gradle Plugin signing properties: `androidStoreFile`, `androidStorePassword`, `androidKeyAlias`, and `androidKeyPassword`. Without all four values, local release APKs are intentionally unsigned. The `sideload` build type uses the debug certificate and is not a production release signature.
+
+For implementation details, see [Architecture](docs/ARCHITECTURE.md).
+
+## Project origin and license
+
+Thanks to the original project and its contributors at [parallelcc/MiCTS](https://github.com/parallelcc/MiCTS). This derivative retains the inherited MiCTS name, application IDs, package names, and GPL-3.0 license while maintaining its own direction at [rungruch/MiCTS](https://github.com/rungruch/MiCTS).
+
+Distributed under the [GNU General Public License v3.0](LICENSE).
