@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
 
             val result = withContext(Dispatchers.Default) {
                 nativeGateway.invoke(
-                    entryPoint = 1,
+                    entryPoint = 0,
                     context = this@MainActivity,
                     vibrate = settings.vibrate,
                 )

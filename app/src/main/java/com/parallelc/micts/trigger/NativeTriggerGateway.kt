@@ -29,7 +29,9 @@ class AndroidNativeTriggerGateway : NativeTriggerGateway {
     ): NativeTriggerResult = runCatching {
         val bundle = Bundle().apply {
             putLong("invocation_time_ms", SystemClock.elapsedRealtime())
-            putInt("omni.entry_point", entryPoint)
+            if (entryPoint > 0) {
+                putInt("omni.entry_point", entryPoint)
+            }
         }
         val serviceClass = Class.forName(
             "com.android.internal.app.IVoiceInteractionManagerService",
@@ -61,6 +63,8 @@ class AndroidNativeTriggerGateway : NativeTriggerGateway {
                 7,
             ) as Boolean
         }
+
+        Log.i(LOG_TAG, "Native trigger result: entryPoint=$entryPoint, accepted=$accepted")
 
         if (accepted) {
             if (vibrate && context != null) vibrate(context)
