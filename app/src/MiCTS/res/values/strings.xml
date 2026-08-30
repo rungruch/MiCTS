@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="change">Change</string>
+    <string name="trigger_strategy">Trigger strategy</string>
+    <string name="trigger_strategy_auto">Auto: native first</string>
+    <string name="trigger_strategy_native">Native Circle to Search only</string>
+    <string name="trigger_strategy_lens">Google Lens fallback</string>
+    <string name="reset_auto_detection">Reset Auto detection</string>
+    <string name="native_confirmation_title">Did native Circle to Search appear?</string>
+    <string name="native_confirmation_message">MiCTS cannot observe Google’s private eligibility result. Tell it whether the previous native trigger worked, and Auto mode will remember your choice.</string>
+    <string name="native_confirmation_yes">Yes, keep native</string>
+    <string name="native_confirmation_no">No, use Lens fallback</string>
+    <string name="capture_permission_denied_title">Screen capture permission needed</string>
+    <string name="capture_permission_denied">Screen capture permission was not granted. Approve Android’s screen-capture request to continue.</string>
+    <string name="capture_notification_channel">Screen capture</string>
+    <string name="capture_notification_title">Preparing Lens fallback</string>
+    <string name="capture_notification_text">Capturing one frame for Google Lens</string>
+    <string name="opening_lens">Opening Google Lens…</string>
+    <string name="retake">Retake</string>
+    <string name="protected_capture_title">This screen could not be captured</string>
+    <string name="protected_capture_message">The captured frame was blank. The visible app may protect its content with Android’s secure-window setting.</string>
+    <string name="capture_failed_title">Screen capture failed</string>
+    <string name="capture_permission_invalid">Android did not return a valid capture permission.</string>
+    <string name="capture_service_failed">The screen-capture service could not start.</string>
+    <string name="capture_projection_stopped">Android stopped the screen-capture session.</string>
+    <string name="capture_timed_out">No screen frame arrived before the capture timed out.</string>
+    <string name="capture_empty_image">The captured image could not be opened.</string>
+    <string name="capture_write_failed">The captured image could not be saved to temporary storage.</string>
+    <string name="capture_consent_expired">The reusable screen-capture approval is no longer available. Retake and approve Android’s request once more.</string>
+    <string name="capture_unknown_error">An unknown screen-capture error occurred.</string>
+    <string name="lens_unavailable_title">Google Lens is unavailable</string>
+    <string name="lens_unavailable_message">The installed Google app cannot receive the full-screen capture. Install or update the Google app and try again.</string>
+    <string name="open_google_app_store">Open Google app page</string>
+</resources>

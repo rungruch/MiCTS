@@ -2,7 +2,7 @@ package com.parallelc.micts.ui.activity
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -134,14 +134,14 @@ class LensFallbackActivity : ComponentActivity() {
 
     private fun openGoogleStore() {
         val packageName = LensShareGateway.GOOGLE_APP_PACKAGE
-        val marketIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
+        val marketIntent = Intent(Intent.ACTION_VIEW, "market://details?id=$packageName".toUri())
         try {
             startActivity(marketIntent)
         } catch (_: ActivityNotFoundException) {
             startActivity(
                 Intent(
                     Intent.ACTION_VIEW,
-                    Uri.parse("https://play.google.com/store/apps/details?id=$packageName"),
+                    "https://play.google.com/store/apps/details?id=$packageName".toUri(),
                 ),
             )
         }

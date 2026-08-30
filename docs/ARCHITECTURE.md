@@ -9,22 +9,22 @@ The repository contains one Android application module with two product flavors:
 | Flavor | Application ID | Maintained role |
 | --- | --- | --- |
 | `MiCTS` | `com.parallelc.micts` | Standalone, no-root native Circle to Search trigger with a direct Google Lens fallback. |
-| `VISTrigger` | `com.parallelc.vistrigger` | Separate legacy LSPosed/Xposed module and inherited compatibility code. |
+| `VISTrigger` | `com.parallelc.vistrigger` | Separate non-root direct Voice Interaction Service trigger. |
 
-Both flavors use a minimum SDK of 28, compile and target SDK 37, and a JDK 17 toolchain. The documented device-support range remains Android 9–16 because Android 17 and current libxposed behavior still require physical-device validation.
+Both flavors use a minimum SDK of 28, compile and target SDK 37, and a JDK 17 toolchain. The documented device-support range remains Android 9–16 because Android 17 behavior still requires physical-device validation.
 
 Source ownership is explicit:
 
-- `app/src/main` contains the shared trigger models, preference stores, one-shot capture implementation, encoding policy, temporary-file helpers, theme, and Quick Settings tile.
-- `app/src/MiCTS` contains the lean settings UI, no-root trigger gateway, native-confirmation flow, and direct Lens trampoline.
-- `app/src/VISTrigger` contains the LSPosed module entry point, hook implementations, legacy settings, and editor-era code.
+- `app/src/main` contains the shared language model, native trigger gateway, native-result type, theme, manifest shell, and Quick Settings tile.
+- `app/src/MiCTS` contains the strategy settings, native-confirmation flow, one-shot capture implementation, encoding and temporary-file helpers, and direct Lens trampoline.
+- `app/src/VISTrigger` contains only its direct VIS launch flow, lean settings repository and UI, and obsolete-preference migration.
 - Flavor-specific unit and instrumented tests live under the corresponding `testMiCTS`, `testVISTrigger`, `androidTestMiCTS`, and `androidTestVISTrigger` source sets.
 
-`AppConfig` and several activities are flavor-specific so legacy root/editor configuration is not compiled into standalone MiCTS. The `hiddenapibypass` dependency remains shared because both native trigger gateways use Android's hidden voice-interaction binder interface. libxposed dependencies are added only to VISTrigger.
+`AppConfig`, `MainApplication`, and activities are flavor-specific because the two apps have different settings and lifecycle needs. The shared `hiddenapibypass` dependency allows both ordinary app processes to call Android's hidden voice-interaction binder interface. It does not require root, module scopes, or an LSPosed service.
 
 ## Standalone MiCTS trigger flow
 
-`MainActivity` is a transparent trigger trampoline. It reads `TriggerPreferenceStore`, applies the configured launch or tile delay via non-blocking lifecycle coroutines, and asks `TriggerCoordinator` for one of four actions: invoke native, request native confirmation, request Lens capture, or finish.
+MiCTS `MainActivity` is a transparent trigger trampoline. It reads `TriggerPreferenceStore`, applies the configured launch or tile delay via non-blocking lifecycle coroutines, and asks `TriggerCoordinator` for one of four actions: invoke native, request native confirmation, request Lens capture, or finish.
 
 ### Auto: native first
 
@@ -74,30 +74,21 @@ The operation times out after seven seconds. Typed failures cover invalid permis
 
 ## Encoding and temporary storage
 
-`CaptureEncoding` derives the format, filename, MIME type, and cleanup policy from a flavor build flag:
-
-| Flavor | Format | Quality | Cache file |
-| --- | --- | --- | --- |
-| MiCTS | JPEG | 90 | `cache/lens_capture/capture.jpg` |
-| VISTrigger | PNG | Lossless | `cache/lens_capture/capture.png` |
+MiCTS `CaptureEncoding` keeps its JPEG format, filename, MIME type, and cleanup policy together: quality 90 at `cache/lens_capture/capture.jpg`.
 
 Preparing a capture removes the previous file. MiCTS also removes the old PNG filename left by earlier versions. Cancel and retry actions delete the current capture. A successful Lens handoff may retain the app-private file long enough for the Google app to read it; the next capture replaces it.
 
 Lens sharing uses `ACTION_SEND`, restricts the target package to `com.google.android.googlequicksearchbox`, and grants temporary read access only to the FileProvider URI. Standalone MiCTS does not declare Internet permission and does not upload the capture itself.
 
-## VISTrigger isolation and legacy behavior
+## VISTrigger direct VIS flow
 
-VISTrigger is a separate APK, not a root mode inside standalone MiCTS. Its flavor contains:
+VISTrigger remains a separate APK rather than a mode inside MiCTS. Its transparent `MainActivity` reads typed settings, selects the app or tile delay, waits in a lifecycle coroutine, and calls the shared native trigger gateway with entry point 1. Android acceptance optionally produces vibration; rejection or reflection failure produces a short failure message. The activity then exits.
 
-- libxposed metadata with API range 101–102.
-- Scopes for the Android system, Xiaomi/POCO launchers, and the Google app.
-- Inherited Xiaomi and Meizu navigation/Home hooks and Google-app device spoofing.
-- Legacy trigger-service settings and a direct native binder gateway.
-- Inherited crop/editor models, screens, and tests.
+VISTrigger has no strategy coordinator, native-result confirmation, MediaProjection permission, capture service, FileProvider, Lens gateway, crop editor, OCR/AI interface, system hooks, device spoofing, or Xposed metadata. Its settings are limited to app delay, tile delay, vibration, and language.
 
-The legacy source tree should not be confused with a supported OCR or AI implementation. `TextRecognitionGatewayFactory` returns a successful empty result, while `AiGatewayFactory` fails with “AI is not supported in VISTrigger.” Neither ML Kit nor an HTTP client is included in the current dependency graph. Documentation therefore treats these editor-era interfaces as compatibility code rather than active product features.
+`VisTriggerPreferenceMigration` preserves those four settings when upgrading older installations and removes obsolete app-local strategy, capture, editor, and AI preferences. Former remote module configuration belongs to the removed LSPosed service boundary and is never accessed by the non-root app.
 
-CI enforces the important boundary in the other direction: the built MiCTS APK must contain no Xposed metadata and no VISTrigger hook, AI, OCR, crop-activity, crop-view-model, geometry, or recognition classes. The VISTrigger APK must retain its Xposed initialization metadata.
+CI inspects both built APKs for Xposed metadata and libxposed classes. It additionally verifies that VISTrigger contains none of the removed module, editor, capture, or fallback classes and that only MiCTS registers MediaProjection and FileProvider components.
 
 ## Privacy and security boundaries
 
@@ -108,8 +99,8 @@ CI enforces the important boundary in the other direction: the built MiCTS APK m
 - Google receives a screenshot only through the explicit Lens fallback handoff and applies its own privacy and retention policies.
 - Native request acceptance does not prove Circle to Search eligibility or successful UI display.
 - Avoiding accessibility does not guarantee acceptance by banking, enterprise, or security-sensitive applications.
-- VISTrigger executes hooks inside explicitly scoped processes and therefore carries the security and stability risks of root and LSPosed modules.
-- Google and OEM updates can change native services, hook targets, eligibility, and Lens behavior independently of this project.
+- VISTrigger executes only in its own ordinary application process and never receives a captured frame.
+- Google and OEM updates can change hidden native services, eligibility, and Lens behavior independently of this project.
 
 ## Build and continuous verification
 
@@ -126,6 +117,6 @@ Common local checks are:
   --no-parallel
 ```
 
-The GitHub Actions verification job uses JDK 17, runs both unit-test and lint suites, assembles both debug APKs, inspects MiCTS isolation, and confirms VISTrigger's Xposed metadata. A manually dispatched connected-test job supports emulator API levels 28, 33, 34, and 37.
+The GitHub Actions verification job uses JDK 17, runs both unit-test and lint suites, assembles both debug APKs, validates their package identities and non-root boundaries, and checks their manifest separation. A manually dispatched connected-test job supports emulator API levels 28, 33, 34, and 37.
 
 Push and tag workflows also attempt minified release builds. They require all signing secrets, verify both APK signatures with `apksigner`, and upload workflow artifacts. Local release builds without the four Gradle signing properties are intentionally unsigned; the `sideload` build type is debug-signed.

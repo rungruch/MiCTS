@@ -17,18 +17,18 @@ MiCTS is a small Android utility that tries to open native Circle to Search with
 - Uses Android's voice-interaction binder path for the standalone native trigger.
 - Uses a one-shot MediaProjection service for Lens fallback capture.
 - Declares no accessibility service.
-- Keeps root and LSPosed functionality in a separate `VISTrigger` flavor.
+- Builds a separate `VISTrigger` app for direct, non-root Voice Interaction Service requests.
 
-The standalone MiCTS flavor deliberately does **not** include a crop editor, local OCR, an AI assistant, root hooks, device spoofing, or Xposed metadata. Native Circle to Search eligibility remains controlled by Google, the installed Google app, device configuration, region, account, and OEM software.
+Neither app includes a crop editor, local OCR, an AI assistant, root hooks, device spoofing, or Xposed metadata. Native Circle to Search eligibility remains controlled by Google, the installed Google app, device configuration, region, account, and OEM software.
 
 ## Builds
 
 | Flavor | Application ID | Purpose |
 | --- | --- | --- |
 | `MiCTS` | `com.parallelc.micts` | Standalone no-root native trigger with a direct, full-screen Lens fallback. |
-| `VISTrigger` | `com.parallelc.vistrigger` | Separate legacy LSPosed/Xposed module for users who still need root hooks. |
+| `VISTrigger` | `com.parallelc.vistrigger` | Separate non-root app that directly requests Android's Voice Interaction Service. |
 
-Installing the standalone flavor over an older MiCTS module replaces that installation because the package name is unchanged. Install `VISTrigger` separately if you still need the legacy hooks.
+The apps have different package IDs and can be installed together. Updating an older VISTrigger installation preserves its delay, vibration, and language preferences, but the app is no longer an Xposed module and its former scopes and hook settings are inert.
 
 This personal repository currently does not publish release APKs. Build from source using [Building from source](#building-from-source).
 
@@ -41,9 +41,9 @@ For standalone MiCTS:
 - Google configured as the default assistant for the native voice-interaction trigger.
 - Background and battery restrictions disabled for the Google app when the device vendor would otherwise delay or stop it.
 
-For the separate VISTrigger module, root and a compatible LSPosed installation are also required. Hook behavior depends on Android, the OEM framework, the Google app, launcher versions, and the installed LSPosed framework.
+VISTrigger has the same Android and Google-app requirements for its direct VIS request. It does not require root or LSPosed and does not modify system, launcher, or Google-app processes.
 
-Android 17/API 37 is used by the build toolchain, but Android 17 device support is not claimed until it has been validated on physical devices and current LSPosed frameworks.
+Android 17/API 37 is used by the build toolchain, but Android 17 device support is not claimed until it has been validated on physical devices.
 
 ## Getting started
 
@@ -55,6 +55,8 @@ Android 17/API 37 is used by the build toolchain, but Android 17 device support 
 6. Optionally add the MiCTS tile to Quick Settings or configure another automation to launch MiCTS.
 
 Open settings by long-pressing the app icon and choosing **Settings**, or by long-pressing the Quick Settings tile.
+
+For VISTrigger, install the separate APK and launch it from its icon, Quick Settings tile, or an automation. It applies the configured delay, directly requests the Voice Interaction Service, optionally vibrates when Android accepts the request, and then exits. VISTrigger does not perform MiCTS's Auto confirmation or Lens fallback flow.
 
 ## Trigger strategies
 
@@ -77,22 +79,16 @@ The Lens fallback uses Android MediaProjection and a short-lived foreground serv
 
 MiCTS stores consent only in process memory; it does not serialize MediaProjection permission data to disk or keep a permanently armed capture service. Permission denial, expired consent, capture timeout, protected content, write failure, and unavailable Lens produce a retry or explanatory screen.
 
-## Standalone settings
+## Settings
 
-- Default app-launch trigger delay.
-- Quick Settings tile trigger delay.
-- Vibration on a successful native request.
-- Auto, native-only, or Lens fallback strategy.
-- Resetting Auto's remembered result.
-- App interface language with Android 13+ Per-App Language integration.
+- Both apps provide default app-launch delay, Quick Settings tile delay, vibration on an accepted native request, and interface language with Android 13+ Per-App Language integration.
+- MiCTS additionally provides Auto, native-only, or Lens fallback strategy selection and resetting Auto's remembered result.
 
-## VISTrigger legacy module
+## VISTrigger direct VIS app
 
-`VISTrigger` keeps the inherited LSPosed/Xposed entry point and legacy hooks isolated from the standalone APK. Its module scopes include the Android system framework, Xiaomi/POCO launchers, and the Google app. Depending on the device and Android version, the legacy settings expose VIS, contextual-search service helpers, Xiaomi gesture hooks, Home-button hooks, and Google-app device spoofing.
+`VISTrigger` is intentionally narrower than MiCTS. It calls Android's hidden voice-interaction binder interface directly and does not inspect whether a particular Google UI appeared. A rejected request or reflection failure shows a brief failure message.
 
-Use only the scopes needed for the selected feature. Root hooks and spoofing can break after Android, OEM, Google app, launcher, or LSPosed updates, and this project cannot guarantee that Google will enable Circle to Search.
-
-The VISTrigger source set also retains legacy crop/editor interfaces for compatibility. Its local-recognition gateway currently returns no recognized text and its AI gateway reports that AI is unsupported. Those paths are not advertised as maintained VISTrigger features.
+The implementation uses the non-root `HiddenApiBypass` library because the binder API is hidden from ordinary Android SDK apps. This library does not install hooks, request module scopes, or require an LSPosed service. Android, OEM, or Google-app updates can still change the hidden interface or the UI selected by the default assistant.
 
 ## Privacy and security boundaries
 
@@ -103,13 +99,14 @@ The VISTrigger source set also retains legacy crop/editor interfaces for compati
 - MiCTS declares no accessibility service, overlay permission, broad storage permission, or Internet permission.
 - Android secure-window protection can produce an empty or blocked capture that MiCTS cannot bypass.
 - Avoiding accessibility does not guarantee acceptance by every banking, enterprise, or security-sensitive app.
-- The VISTrigger flavor has additional root/Xposed trust boundaries because its configured hooks execute inside scoped processes.
+- VISTrigger does not capture the screen or register a MediaProjection service or FileProvider.
+- Neither APK contains Xposed metadata or executes inside another process.
 
 ## Troubleshooting
 
 ### “Trigger failed!” appears
 
-Confirm that the Google app is installed, updated, allowed to run in the background, and configured as the default assistant. If you are using VISTrigger, also verify that LSPosed is active and the required scopes are selected.
+Confirm that the Google app is installed, updated, allowed to run in the background, and configured as the default assistant.
 
 ### Google Assistant opens instead of Circle to Search
 
@@ -117,7 +114,7 @@ The native request reached Google's assistant path, but Google did not expose Ci
 
 ### Logcat contains `Omni invocation failed: not enabled`
 
-Google received the native request but declined to enable its native interface. Standalone MiCTS cannot override that decision. Select the Lens fallback, or review VISTrigger's root-based options with an understanding of their risks.
+Google received the native request but declined to enable its native interface. Neither non-root app can override that decision. MiCTS can use its Lens fallback; VISTrigger only reports direct VIS request failure.
 
 ### Native UI appears only after opening the Google app manually
 

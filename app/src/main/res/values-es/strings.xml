@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="tile_label">Busca con un círculo</string>
     <string name="title_activity_settings">Configuración</string>
     <string name="trigger_failed">¡No se pudo activar!</string>
     <string name="app_settings">Ajustes de la aplicación</string>
     <string name="default_trigger_delay">Retraso de activación predeterminado</string>
     <string name="tile_trigger_delay">Retraso de activación del mosaico</string>
     <string name="vibrate">Vibrar</string>
-    <string name="async_trigger">Activación asíncrona</string>
     <string name="language">Idioma</string>
     <string name="follow_system">Predeterminado del sistema</string>
 </resources>

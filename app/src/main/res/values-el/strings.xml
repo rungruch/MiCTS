@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="tile_label">Κυκλώστε για Αναζήτηση</string>
     <string name="title_activity_settings">Ρυθμίσεις</string>
     <string name="trigger_failed">Το έναυσμα απέτυχε!</string>
     <string name="app_settings">Ρυθμίσεις Εφαρμογής</string>
     <string name="default_trigger_delay">Καθυστέρηση προεπιλεγμένου εναύσματος</string>
     <string name="tile_trigger_delay">Καθυστέρηση εναύσματος πλακιδίου</string>
     <string name="vibrate">Δόνηση</string>
-    <string name="async_trigger">Ασύγχρονο έναυσμα</string>
     <string name="language">Γλώσσα</string>
     <string name="follow_system">Σύμφωνα με το σύστημα</string>
 </resources>

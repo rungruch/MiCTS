@@ -71,18 +71,15 @@ android {
             dimension = "app"
             applicationId = "com.parallelc.micts"
             buildConfigField("String", "APP_NAME", "\"MiCTS\"")
-            buildConfigField("boolean", "CAPTURE_AS_JPEG", "true")
         }
 
         create("VISTrigger") {
             dimension = "app"
             applicationId = "com.parallelc.vistrigger"
             resValue("string", "app_name", "VISTrigger")
+            resValue("string", "app_description", "Trigger Voice Interaction Service without root")
             resValue("string", "tile_label", "VIS")
-            resValue("string", "xposed_description", "Trigger Voice Interaction Service on any Android 9–16 device")
             buildConfigField("String", "APP_NAME", "\"VISTrigger\"")
-            buildConfigField("boolean", "CAPTURE_AS_JPEG", "false")
-            proguardFiles("src/VISTrigger/proguard-rules.pro")
         }
     }
 
@@ -105,21 +102,14 @@ kotlin {
 dependencies {
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.viewmodel.ktx)
-    implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.activity.compose)
     implementation(platform(libs.compose.bom))
     implementation(libs.material)
     implementation(libs.material3)
-    implementation(libs.animation.core.android)
-    implementation(libs.animation.android)
     implementation(libs.androidx.material.icons.core)
-    implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
-    implementation(libs.accompanist.drawablepainter)
     implementation(libs.hiddenapibypass)
-    add("VISTriggerCompileOnly", libs.libxposed.api)
-    add("VISTriggerImplementation", libs.libxposed.service)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.core.ktx)

@@ -16,6 +16,3 @@ updates:
           - androidx.compose:*
           - androidx.lifecycle:*
           - com.google.android.material:*
-      libxposed:
-        patterns:
-          - io.github.libxposed:*

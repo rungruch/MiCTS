@@ -37,7 +37,6 @@ import com.parallelc.micts.R
 import com.parallelc.micts.capture.ScreenCaptureService
 import com.parallelc.micts.config.AppConfig.CONFIG_NAME
 import com.parallelc.micts.config.AppConfig.DEFAULT_CONFIG
-import com.parallelc.micts.config.AppConfig.KEY_ASYNC_TRIGGER
 import com.parallelc.micts.config.AppConfig.KEY_DEFAULT_DELAY
 import com.parallelc.micts.config.AppConfig.KEY_TILE_DELAY
 import com.parallelc.micts.config.AppConfig.KEY_VIBRATE
@@ -58,7 +57,7 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     companion object {
-        private const val EXTRA_FROM_TILE = "from_tile"
+        const val EXTRA_FROM_TILE = "from_tile"
         private const val EXTRA_FORCE_LENS = "force_lens_fallback"
         private const val STATE_CAPTURE_REQUEST_IN_FLIGHT = "capture_request_in_flight"
         private const val STATE_CAPTURE_SERVICE_STARTED = "capture_service_started"

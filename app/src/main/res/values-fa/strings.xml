@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="tile_label">حلقه جستجو</string>
     <string name="title_activity_settings">تنظیمات</string>
     <string name="trigger_failed">فعال‌سازی ناموفق بود!</string>
     <string name="app_settings">تنظیمات برنامه</string>
     <string name="default_trigger_delay">تأخیر پیش‌فرض فعال‌سازی</string>
     <string name="tile_trigger_delay">تأخیر فعال‌سازی از طریق کاشی</string>
     <string name="vibrate">لرزش</string>
-    <string name="async_trigger">فعال‌سازی ناهمزمان</string>
     <string name="language">زبان</string>
     <string name="follow_system">پیروی از سیستم</string>
 </resources>

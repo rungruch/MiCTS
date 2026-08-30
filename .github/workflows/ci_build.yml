@@ -51,24 +51,46 @@ jobs:
       - name: Assemble debug APKs
         run: ./gradlew :app:assembleMiCTSDebug :app:assembleVISTriggerDebug --no-parallel
 
-      - name: Check MiCTS APK isolation
+      - name: Check APK identities and non-root isolation
         run: |
-          apk=app/build/outputs/apk/MiCTS/debug/app-MiCTS-debug.apk
-          test -f "$apk"
-          if unzip -l "$apk" | grep -q 'META-INF/xposed/'; then
-            echo "MiCTS APK must not contain Xposed metadata."
-            exit 1
-          fi
-          if unzip -p "$apk" 'classes*.dex' | strings | grep -Eq 'com/parallelc/micts/(hooker|data/Ai|ui/activity/CropActivity|ui/viewmodel/CropViewModel|domain/(AiModels|CropGeometry|RecognitionModels))'; then
-            echo "MiCTS APK contains VISTrigger-only hook or editor code."
+          set -euo pipefail
+          micts_apk=app/build/outputs/apk/MiCTS/debug/app-MiCTS-debug.apk
+          vistrigger_apk=app/build/outputs/apk/VISTrigger/debug/app-VISTrigger-debug.apk
+          test -f "$micts_apk"
+          test -f "$vistrigger_apk"
+
+          for apk in "$micts_apk" "$vistrigger_apk"; do
+            if unzip -l "$apk" | grep 'META-INF/xposed/' > /dev/null; then
+              echo "$apk must not contain Xposed metadata."
+              exit 1
+            fi
+            if unzip -p "$apk" 'classes*.dex' | strings | grep 'io/github/libxposed' > /dev/null; then
+              echo "$apk must not contain the libxposed runtime or API."
+              exit 1
+            fi
+          done
+
+          if unzip -p "$vistrigger_apk" 'classes*.dex' | strings | grep -E 'com/parallelc/micts/(ModuleMain|hooker/|config/XposedConfig|capture/|data/(Ai|Capture|Compatibility|LensShare|ProjectionConsent|TextRecognition|TriggerPreference|TriggerSettings)|domain/(AiModels|AutoResolution|Capture|Compatibility|CropGeometry|RecognitionModels|TriggerAction|TriggerCoordinator|TriggerStrategy)|ui/activity/(CropActivity|FallbackActivity|LensFallbackActivity)|ui/viewmodel/CropViewModel)' > /dev/null; then
+            echo "VISTrigger APK contains removed module, editor, capture, or fallback code."
             exit 1
           fi
 
-      - name: Check VISTrigger Xposed metadata
-        run: |
-          apk=app/build/outputs/apk/VISTrigger/debug/app-VISTrigger-debug.apk
-          test -f "$apk"
-          unzip -l "$apk" | grep -q 'META-INF/xposed/java_init.list'
+          apkanalyzer="$(command -v apkanalyzer || true)"
+          if [ -z "$apkanalyzer" ]; then
+            apkanalyzer="$(find "$ANDROID_HOME/cmdline-tools" -type f -name apkanalyzer | sort | tail -n 1)"
+          fi
+          test -x "$apkanalyzer"
+          test "$("$apkanalyzer" manifest application-id "$micts_apk")" = "com.parallelc.micts"
+          test "$("$apkanalyzer" manifest application-id "$vistrigger_apk")" = "com.parallelc.vistrigger"
+
+          micts_manifest="$("$apkanalyzer" manifest print "$micts_apk")"
+          vistrigger_manifest="$("$apkanalyzer" manifest print "$vistrigger_apk")"
+          grep -q 'ScreenCaptureService' <<< "$micts_manifest"
+          grep -q 'androidx.core.content.FileProvider' <<< "$micts_manifest"
+          if grep -Eq 'ScreenCaptureService|androidx.core.content.FileProvider|FOREGROUND_SERVICE_MEDIA_PROJECTION|de.robv.android.xposed' <<< "$vistrigger_manifest"; then
+            echo "VISTrigger manifest contains MiCTS capture or Xposed components."
+            exit 1
+          fi
 
   connected-tests:
     name: Connected tests (API ${{ inputs.api_level }})
