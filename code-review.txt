@@ -1,0 +1,21 @@
+Code Review — Final Recheck
+
+Status
+
+No actionable functional findings remain after the final recheck.
+
+Resolved items
+
+- Restored the missing VISTrigger imports.
+- Reworked padded screen capture extraction to use a reusable row buffer.
+- Removed unsupported or ineffective VISTrigger settings controls.
+- Routed standalone MiCTS settings through TriggerSettingsRepository.
+- Integrated Android 13+ per-app locale handling, including legacy preference migration.
+- Removed blocking trigger dispatch from MainActivity.
+- Fixed the missing android.os.Build import in the MiCTS SettingsActivity.
+
+Validation
+
+- Static import and source checks passed.
+- Gradle tests could not run because no Java runtime is installed in the environment.
+- git diff --check reports only non-functional line-ending and blank-line warnings in VISTrigger files.

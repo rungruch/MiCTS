@@ -1,6 +1,7 @@
 package com.parallelc.micts.ui.activity
 
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -43,8 +44,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.activity.viewModels
 import com.parallelc.micts.BuildConfig
-import com.parallelc.micts.MainApplication
 import com.parallelc.micts.R
 import com.parallelc.micts.config.AppConfig
 import com.parallelc.micts.config.Language
@@ -54,18 +55,23 @@ import com.parallelc.micts.ui.theme.MiCTSTheme
 import com.parallelc.micts.ui.viewmodel.SettingsViewModel
 
 class SettingsActivity : ComponentActivity() {
+    private val viewModel by viewModels<SettingsViewModel> { SettingsViewModel.Factory }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         actionBar?.hide()
-        val viewModel = (application as MainApplication).settingsViewModel
         setContent {
             MiCTSTheme {
                 val locale by viewModel.locale.collectAsState()
-                val configuration = Configuration(resources.configuration).apply { setLocale(locale) }
-                CompositionLocalProvider(
-                    LocalContext provides createConfigurationContext(configuration),
-                ) {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                    val configuration = Configuration(resources.configuration).apply { setLocale(locale) }
+                    CompositionLocalProvider(
+                        LocalContext provides createConfigurationContext(configuration),
+                    ) {
+                        LeanSettingsScreen(viewModel)
+                    }
+                } else {
                     LeanSettingsScreen(viewModel)
                 }
             }
@@ -158,13 +164,6 @@ private fun LeanSettingsScreen(viewModel: SettingsViewModel) {
                 checked = appConfig[AppConfig.KEY_VIBRATE] as Boolean,
                 onCheckedChange = {
                     viewModel.updateAppConfig(AppConfig.KEY_VIBRATE, it)
-                },
-            )
-            SwitchSetting(
-                title = stringResource(R.string.async_trigger),
-                checked = appConfig[AppConfig.KEY_ASYNC_TRIGGER] as Boolean,
-                onCheckedChange = {
-                    viewModel.updateAppConfig(AppConfig.KEY_ASYNC_TRIGGER, it)
                 },
             )
 

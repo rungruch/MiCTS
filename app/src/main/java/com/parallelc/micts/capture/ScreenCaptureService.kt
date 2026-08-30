@@ -175,21 +175,18 @@ class ScreenCaptureService : Service() {
         runCatching {
             val plane = image.planes.firstOrNull()
                 ?: error("Captured image has no pixel plane")
-            val pixelStride = plane.pixelStride
-            val rowStride = plane.rowStride
-            val rowPadding = rowStride - pixelStride * width
-            val paddedWidth = width + rowPadding / pixelStride
-            val paddedBitmap = Bitmap.createBitmap(
-                paddedWidth,
-                height,
-                Bitmap.Config.ARGB_8888,
+            val bitmap = PixelBufferExtractor.extract(
+                buffer = plane.buffer,
+                width = width,
+                height = height,
+                pixelStride = plane.pixelStride,
+                rowStride = plane.rowStride,
             )
-            paddedBitmap.copyPixelsFromBuffer(plane.buffer)
-            val bitmap = Bitmap.createBitmap(paddedBitmap, 0, 0, width, height)
-            if (bitmap !== paddedBitmap) paddedBitmap.recycle()
-
-            val result = BitmapCaptureWriter.write(this, bitmap)
-            bitmap.recycle()
+            val result = try {
+                BitmapCaptureWriter.write(this, bitmap)
+            } finally {
+                bitmap.recycle()
+            }
             when (result) {
                 is CaptureResult.Success -> completeSuccess(result.probablyProtected)
                 CaptureResult.PermissionDenied ->

@@ -27,11 +27,25 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import android.app.LocaleManager
+import android.os.LocaleList
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
 @SuppressLint("PrivateApi")
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
+    companion object {
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as Application
+                SettingsViewModel(app)
+            }
+        }
+    }
+
     private var appConfigPref : SharedPreferences
     private val _appConfig = MutableStateFlow<Map<String,Any>>(emptyMap())
     val appConfig: StateFlow<Map<String,Any>> = _appConfig
@@ -70,7 +84,32 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
         val secureApiKey = aiKeyStorage.getApiKey()
         _appConfig.value = AppConfig.DEFAULT_CONFIG + appConfigPref.all.filterValues { it != null }.mapValues { it.value as Any } + mapOf(AppConfig.KEY_AI_API_KEY to secureApiKey)
-        _locale.value = Language.entries[_appConfig.value[AppConfig.KEY_LANGUAGE] as Int].toLocale()
+        val storedLanguage = Language.entries.getOrElse(
+            (_appConfig.value[AppConfig.KEY_LANGUAGE] as? Int) ?: Language.FollowSystem.ordinal,
+        ) { Language.FollowSystem }
+        val initialLanguage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val localeManager = application.getSystemService(LocaleManager::class.java)
+            val appLocales = localeManager?.applicationLocales
+            if (appLocales != null && !appLocales.isEmpty) {
+                val firstLocale = appLocales.get(0)
+                Language.entries.firstOrNull {
+                    it.languageTag != null && (
+                        it.languageTag == firstLocale.toLanguageTag() ||
+                        it.languageTag.startsWith(firstLocale.language)
+                    )
+                } ?: Language.FollowSystem
+            } else if (storedLanguage != Language.FollowSystem && storedLanguage.languageTag != null) {
+                runCatching {
+                    localeManager?.applicationLocales = LocaleList.forLanguageTags(storedLanguage.languageTag)
+                }
+                storedLanguage
+            } else {
+                Language.FollowSystem
+            }
+        } else {
+            storedLanguage
+        }
+        _locale.value = initialLanguage.toLocale()
         XposedServiceHelper.registerListener(object : XposedServiceHelper.OnServiceListener {
             override fun onServiceBind(service: XposedService) {
                 viewModelScope.launch(Dispatchers.IO) {
@@ -101,7 +140,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun updateAppConfig(key: String, value: Any) {
         if (key == AppConfig.KEY_LANGUAGE) {
-            _locale.value = Language.entries[value as Int].toLocale()
+            val language = Language.entries.getOrElse(value as Int) { Language.FollowSystem }
+            _locale.value = language.toLocale()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                runCatching {
+                    val localeManager = getApplication<Application>().getSystemService(LocaleManager::class.java)
+                    val localeList = if (language.languageTag != null) {
+                        LocaleList.forLanguageTags(language.languageTag)
+                    } else {
+                        LocaleList.getEmptyLocaleList()
+                    }
+                    localeManager.applicationLocales = localeList
+                }
+            }
         } else {
             _appConfig.value = _appConfig.value.toMutableMap().apply {
                 this[key] = value

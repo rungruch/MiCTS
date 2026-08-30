@@ -82,10 +82,9 @@ MiCTS stores consent only in process memory; it does not serialize MediaProjecti
 - Default app-launch trigger delay.
 - Quick Settings tile trigger delay.
 - Vibration on a successful native request.
-- Synchronous or asynchronous trigger dispatch.
 - Auto, native-only, or Lens fallback strategy.
 - Resetting Auto's remembered result.
-- App interface language.
+- App interface language with Android 13+ Per-App Language integration.
 
 ## VISTrigger legacy module
 

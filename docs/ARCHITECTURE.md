@@ -24,7 +24,7 @@ Source ownership is explicit:
 
 ## Standalone MiCTS trigger flow
 
-`MainActivity` is a transparent trigger trampoline. It reads `TriggerPreferenceStore`, applies the configured launch or tile delay, and asks `TriggerCoordinator` for one of four actions: invoke native, request native confirmation, request Lens capture, or finish.
+`MainActivity` is a transparent trigger trampoline. It reads `TriggerPreferenceStore`, applies the configured launch or tile delay via non-blocking lifecycle coroutines, and asks `TriggerCoordinator` for one of four actions: invoke native, request native confirmation, request Lens capture, or finish.
 
 ### Auto: native first
 
@@ -63,7 +63,7 @@ Standalone MiCTS registers a non-exported `ScreenCaptureService` as a media-proj
 1. Clears and hides the transparent trigger UI.
 2. Starts a fresh MediaProjection session for the default display.
 3. Creates an `ImageReader` and virtual display.
-4. Acquires one RGBA frame and removes row-padding pixels.
+4. Acquires one RGBA frame and extracts compact bitmap pixels via `PixelBufferExtractor` (single-pass direct copy when row padding is zero, and row-by-row buffer transfer when row padding is nonzero to avoid intermediate bitmap allocations).
 5. Encodes the frame and checks for an empty or probably protected result.
 6. Releases the reader, virtual display, callback, and MediaProjection.
 7. Stops the foreground service and routes to the flavor's fallback activity.

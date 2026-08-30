@@ -31,11 +31,9 @@ class AndroidNativeTriggerGateway : NativeTriggerGateway {
     ): NativeTriggerResult {
         return runCatching {
             val bundle = Bundle().apply {
-                if (BuildConfig.APP_NAME == "MiCTS") {
-                    putLong("invocation_time_ms", SystemClock.elapsedRealtime())
-                    putInt("omni.entry_point", entryPoint)
-                    putBoolean("micts_trigger", true)
-                }
+                putLong("invocation_time_ms", SystemClock.elapsedRealtime())
+                putInt("omni.entry_point", entryPoint)
+                putBoolean("micts_trigger", true)
             }
             val serviceClass = Class.forName(
                 "com.android.internal.app.IVoiceInteractionManagerService",

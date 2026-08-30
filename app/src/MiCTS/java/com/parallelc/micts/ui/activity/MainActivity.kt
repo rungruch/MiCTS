@@ -52,9 +52,9 @@ import com.parallelc.micts.domain.TriggerCoordinator
 import com.parallelc.micts.domain.TriggerStrategy
 import com.parallelc.micts.trigger.AndroidNativeTriggerGateway
 import com.parallelc.micts.ui.theme.MiCTSTheme
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -75,6 +75,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var triggerPreferences: TriggerPreferenceStore
     private var captureRequestInFlight = false
     private var captureServiceStarted = false
+    private var triggerJob: Job? = null
 
     private val projectionPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -123,12 +124,8 @@ class MainActivity : ComponentActivity() {
         }
         val delayMs = preferences.getLong(delayKey, DEFAULT_CONFIG[delayKey] as Long)
         val vibrate = preferences.getBoolean(KEY_VIBRATE, DEFAULT_CONFIG[KEY_VIBRATE] as Boolean)
-        val asyncTrigger = preferences.getBoolean(
-            KEY_ASYNC_TRIGGER,
-            DEFAULT_CONFIG[KEY_ASYNC_TRIGGER] as Boolean,
-        )
 
-        val triggerFlow: suspend () -> Unit = {
+        triggerJob = lifecycleScope.launch {
             if (delayMs > 0 && !intent.getBooleanExtra(EXTRA_FORCE_LENS, false)) {
                 delay(delayMs)
             }
@@ -144,11 +141,11 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
-        if (asyncTrigger) {
-            lifecycleScope.launch { triggerFlow() }
-        } else {
-            runBlocking { triggerFlow() }
-        }
+    }
+
+    override fun onDestroy() {
+        triggerJob?.cancel()
+        super.onDestroy()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
