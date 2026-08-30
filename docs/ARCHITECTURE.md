@@ -82,7 +82,7 @@ Lens sharing uses `ACTION_SEND`, restricts the target package to `com.google.and
 
 ## VISTrigger direct VIS flow
 
-VISTrigger remains a separate APK rather than a mode inside MiCTS. Its transparent `MainActivity` reads typed settings, selects the app or tile delay, waits in a lifecycle coroutine, and calls the shared native trigger gateway with entry point 1. Android acceptance optionally produces vibration; rejection or reflection failure produces a short failure message. The activity then exits.
+VISTrigger remains a separate APK rather than a mode inside MiCTS. Its transparent `MainActivity` reads typed settings, selects the app or tile delay, waits in a lifecycle coroutine, and calls the shared native trigger gateway with entry point 0 (pure Voice Interaction Service request for Gemini Assistant without Circle to Search flags). Android acceptance optionally produces vibration; rejection or reflection failure produces a short failure message. The activity then exits.
 
 VISTrigger has no strategy coordinator, native-result confirmation, MediaProjection permission, capture service, FileProvider, Lens gateway, crop editor, OCR/AI interface, system hooks, device spoofing, or Xposed metadata. Its settings are limited to app delay, tile delay, vibration, and language.
 

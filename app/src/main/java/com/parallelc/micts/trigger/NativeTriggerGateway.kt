@@ -2,6 +2,7 @@ package com.parallelc.micts.trigger
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.os.Build
 import android.os.Bundle
@@ -16,6 +17,26 @@ import org.lsposed.hiddenapibypass.HiddenApiBypass
 
 private const val LOG_TAG = "NativeTrigger"
 
+data class NativeTriggerPayload(
+    val invocationTimeMs: Long,
+    val omniEntryPoint: Int? = null,
+) {
+    fun toBundle(): Bundle = Bundle().apply {
+        putLong("invocation_time_ms", invocationTimeMs)
+        if (omniEntryPoint != null && omniEntryPoint > 0) {
+            putInt("omni.entry_point", omniEntryPoint)
+        }
+    }
+}
+
+internal fun buildSessionPayload(
+    entryPoint: Int,
+    invocationTimeMs: Long = SystemClock.elapsedRealtime(),
+): NativeTriggerPayload = NativeTriggerPayload(
+    invocationTimeMs = invocationTimeMs,
+    omniEntryPoint = if (entryPoint > 0) entryPoint else null,
+)
+
 interface NativeTriggerGateway {
     fun invoke(entryPoint: Int, context: Context?, vibrate: Boolean): NativeTriggerResult
 }
@@ -27,12 +48,7 @@ class AndroidNativeTriggerGateway : NativeTriggerGateway {
         context: Context?,
         vibrate: Boolean,
     ): NativeTriggerResult = runCatching {
-        val bundle = Bundle().apply {
-            putLong("invocation_time_ms", SystemClock.elapsedRealtime())
-            if (entryPoint > 0) {
-                putInt("omni.entry_point", entryPoint)
-            }
-        }
+        val bundle = buildSessionPayload(entryPoint).toBundle()
         val serviceClass = Class.forName(
             "com.android.internal.app.IVoiceInteractionManagerService",
         )
@@ -69,11 +85,42 @@ class AndroidNativeTriggerGateway : NativeTriggerGateway {
         if (accepted) {
             if (vibrate && context != null) vibrate(context)
             NativeTriggerResult.AcceptedUnverified
+        } else if (entryPoint == 0 && context != null) {
+            val fallbackTriggered = runCatching {
+                val voiceIntent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(voiceIntent)
+                true
+            }.getOrDefault(false)
+
+            if (fallbackTriggered) {
+                if (vibrate) vibrate(context)
+                NativeTriggerResult.AcceptedUnverified
+            } else {
+                NativeTriggerResult.Rejected
+            }
         } else {
             NativeTriggerResult.Rejected
         }
     }.onFailure { error ->
         Log.e(LOG_TAG, "Native trigger failed", error)
+    }.recoverCatching { error ->
+        if (entryPoint == 0 && context != null) {
+            val fallbackTriggered = runCatching {
+                val voiceIntent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(voiceIntent)
+                true
+            }.getOrDefault(false)
+
+            if (fallbackTriggered) {
+                if (vibrate) vibrate(context)
+                return@recoverCatching NativeTriggerResult.AcceptedUnverified
+            }
+        }
+        throw error
     }.getOrElse { NativeTriggerResult.Error(it) }
 
     private fun vibrate(context: Context) {
