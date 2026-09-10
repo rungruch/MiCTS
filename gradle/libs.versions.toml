@@ -1,7 +1,7 @@
 [versions]
-agp = "9.3.2"
+agp = "9.4.0"
 hiddenapibypass = "6.1"
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 material = "1.14.0"
 lifecycle-runtime-ktx = "2.11.0"
 activity-compose = "1.13.0"
