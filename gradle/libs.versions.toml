@@ -1,6 +1,6 @@
 [versions]
 agp = "9.3.2"
-hiddenapibypass = "6.1"
+hiddenapibypass = "6.2"
 kotlin = "2.4.10"
 material = "1.14.0"
 lifecycle-runtime-ktx = "2.11.0"
